@@ -179,7 +179,7 @@ class CommandTest(unittest.TestCase):
     def test_verify_command(self):
         self.assertEqual(
             b0.lean_verify_command(Path("/tmp/x.lean")),
-            ["lake", "env", "lean", "/tmp/x.lean"],
+            ["lake", "env", "lean", str(Path("/tmp/x.lean").resolve())],
         )
 
     def test_lean_dir(self):
@@ -212,3 +212,12 @@ class SummaryTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LeanVerifyCommandTest(unittest.TestCase):
+    def test_candidate_path_is_absolute_for_relative_input(self):
+        from pathlib import Path
+
+        cmd = b0.lean_verify_command("runs/x/candidates/a.lean")
+        self.assertEqual(cmd[:3], ["lake", "env", "lean"])
+        self.assertTrue(Path(cmd[3]).is_absolute())

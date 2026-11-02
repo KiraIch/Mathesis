@@ -202,7 +202,8 @@ def build_candidate(header: str, proof: str, footer: str) -> str:
 
 
 def lean_verify_command(path) -> list[str]:
-    return ["lake", "env", "lean", str(path)]
+    # lake runs from the Lean project directory, so the candidate path must be absolute.
+    return ["lake", "env", "lean", str(Path(path).resolve())]
 
 
 def default_lean_dir() -> Path:
@@ -275,6 +276,9 @@ def run_lean(path, lean_dir=None, timeout: int = LEAN_TIMEOUT_S) -> LeanRun:
         raise EnvironmentFailure("cannot run lake: " + str(exc)) from exc
     output = (completed.stdout or "") + (completed.stderr or "")
     elapsed = time.monotonic() - started
+    if "no such file or directory" in output.lower():
+        # A missing candidate file is a harness bug, not a failed proof.
+        raise EnvironmentFailure("candidate file not found by lake: " + output.strip()[:300])
     if completed.returncode < 0 or (
         completed.returncode != 0 and ENV_ERROR_RE.search(output)
     ):
