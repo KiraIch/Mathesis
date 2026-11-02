@@ -62,6 +62,22 @@ class ImpasseTest(unittest.TestCase):
         current = detector.features()
         self.assertAlmostEqual(current.budget_fraction, 0.5)
 
+    def test_budget_term_alone_does_not_trigger(self):
+        detector = ImpasseDetector(threshold=0.1, patience=1, window=5, budget=10)
+        # progress every step, no duplicates, budget fully consumed
+        fired = detector.update(True, False, 10)
+        self.assertEqual(detector.features().budget_fraction, 1.0)
+        self.assertEqual(detector.score(), 0.0)
+        self.assertFalse(fired)
+
+    def test_budget_weight_configurable(self):
+        detector = ImpasseDetector(
+            threshold=0.1, patience=1, window=5, budget=10, budget_weight=0.2
+        )
+        fired = detector.update(True, False, 10)
+        self.assertAlmostEqual(detector.score(), 0.2)
+        self.assertTrue(fired)
+
 
 if __name__ == "__main__":
     unittest.main()

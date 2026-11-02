@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from mathesis.controller import ImpasseController
+from mathesis.impasse import ImpasseDetector
 from mathesis.experiment import (
     format_summary_table,
     load_problems,
@@ -90,7 +91,9 @@ class ExperimentTest(unittest.TestCase):
         problems = load_problems(path)
         hits = []
         for problem in problems:
-            outcome = run_single(problem, ImpasseController())
+            # legacy weights: this path relied on the 0.2 budget-fraction term
+            legacy = ImpasseDetector(budget=problem.budget_nodes, budget_weight=0.2)
+            outcome = run_single(problem, ImpasseController(), detector=legacy)
             if outcome.impasse_count > 0 and outcome.operator_uses > 0:
                 hits.append(problem.name)
         self.assertGreaterEqual(len(hits), 1)

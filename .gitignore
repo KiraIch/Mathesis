@@ -20,3 +20,6 @@ lean/build/
 
 # literature PDFs (do not commit papers)
 literature/**/*.pdf
+
+# run outputs (regenerable, local only)
+runs/

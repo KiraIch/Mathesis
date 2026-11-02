@@ -1,5 +1,5 @@
 import random
-from typing import Protocol
+from typing import Callable, Protocol
 
 from mathesis.types import Candidate, ProofState
 
@@ -25,7 +25,34 @@ def pick_first(
     return ordered[0]
 
 
+Selector = Callable[[ProofState, list[Candidate]], Candidate | None]
+
+
+class RandomCandidateSelector:
+    """Uniform random choice among candidates (random-candidate baseline B4)."""
+
+    def __init__(self, seed: int = 0) -> None:
+        self.seed = int(seed)
+        self.rng = random.Random(self.seed)
+
+    def __call__(
+        self, state: ProofState, candidates: list[Candidate]
+    ) -> Candidate | None:
+        if not candidates:
+            return None
+        return self.rng.choice(candidates)
+
+
+def _pick_first_selector(
+    state: ProofState, candidates: list[Candidate]
+) -> Candidate | None:
+    return pick_first(candidates)
+
+
 class ImpasseController:
+    def __init__(self, selector: Selector | None = None) -> None:
+        self.selector: Selector = selector or _pick_first_selector
+
     def should_restructure(
         self, node_index: int, impasse_fired: bool
     ) -> bool:
@@ -34,7 +61,7 @@ class ImpasseController:
     def choose(
         self, state: ProofState, candidates: list[Candidate]
     ) -> Candidate | None:
-        return pick_first(candidates)
+        return self.selector(state, candidates)
 
 
 class AlwaysRestructureController:

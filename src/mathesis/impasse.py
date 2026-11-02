@@ -16,7 +16,16 @@ class ImpasseDetector:
         patience: int = 3,
         window: int = 10,
         budget: int = 100,
+        stall_weight: float = 0.5,
+        duplicate_weight: float = 0.3,
+        # The budget-fraction term is monotone in budget_used, so it pushes the
+        # score up late in any search regardless of progress. Default weight is
+        # 0.0 (off); to be calibrated on the calibration split later.
+        budget_weight: float = 0.0,
     ) -> None:
+        self.stall_weight = stall_weight
+        self.duplicate_weight = duplicate_weight
+        self.budget_weight = budget_weight
         self.threshold = threshold
         self.patience = patience
         self.window = window
@@ -51,7 +60,11 @@ class ImpasseDetector:
             budget_part = self.budget_used / self.budget
             if budget_part > 1.0:
                 budget_part = 1.0
-        return (0.5 * nodes_part) + (0.3 * duplicate_part) + (0.2 * budget_part)
+        return (
+            (self.stall_weight * nodes_part)
+            + (self.duplicate_weight * duplicate_part)
+            + (self.budget_weight * budget_part)
+        )
 
     def features(self) -> ImpasseFeatures:
         nodes_part = 0.0

@@ -10,6 +10,7 @@ from mathesis.controller import (
 from mathesis.impasse import ImpasseDetector
 from mathesis.lean_pilot import default_lean_pilot_path, load_lean_pilot
 from mathesis.operators import OracleHaveOperator, TemplateHaveOperator
+from mathesis.runlog import CountingBackend
 from mathesis.search import breadth_first_search
 from mathesis.types import Cost, SearchResult, TraceEvent
 
@@ -73,7 +74,7 @@ def imports_for_entry(entry) -> tuple[str, ...]:
     return tuple(str(item) for item in raw)
 
 
-def make_lean_controller(name: str):
+def make_lean_controller(name: str, seed: int = 0):
     if name == "bfs":
         return ImpasseController()
     if name == "bfs+oracle-have":
@@ -83,7 +84,7 @@ def make_lean_controller(name: str):
     if name == "fixed+oracle-have":
         return FixedScheduleController(interval=5)
     if name == "random+oracle-have":
-        return RandomTriggerController(probability=0.2, seed=0)
+        return RandomTriggerController(probability=0.2, seed=int(seed))
     if name == "bfs+template-have":
         return AlwaysRestructureController()
     if name == "mathesis+template-have":
@@ -91,7 +92,7 @@ def make_lean_controller(name: str):
     if name == "fixed+template-have":
         return FixedScheduleController(interval=5)
     if name == "random+template-have":
-        return RandomTriggerController(probability=0.2, seed=0)
+        return RandomTriggerController(probability=0.2, seed=int(seed))
     raise ValueError("unknown lean-bench config " + repr(name))
 
 
@@ -120,10 +121,40 @@ def run_single_lean_config(
     threshold: float = FROZEN_IMPASSE_THRESHOLD,
     patience: int = FROZEN_IMPASSE_PATIENCE,
     initial_state=None,
+    seed: int = 0,
 ) -> tuple[SearchResult, int, str]:
+    result, wall_ms, error, _calls = run_single_lean_config_measured(
+        backend,
+        theorem,
+        reference_proof,
+        config_name,
+        budget_nodes,
+        timeout,
+        threshold,
+        patience,
+        initial_state,
+        seed,
+    )
+    return result, wall_ms, error
+
+
+def run_single_lean_config_measured(
+    backend,
+    theorem: str,
+    reference_proof,
+    config_name: str,
+    budget_nodes: int,
+    timeout: int,
+    threshold: float = FROZEN_IMPASSE_THRESHOLD,
+    patience: int = FROZEN_IMPASSE_PATIENCE,
+    initial_state=None,
+    seed: int = 0,
+) -> tuple[SearchResult, int, str, int]:
+    """Like run_single_lean_config, but also returns the number of Lean backend calls."""
+    backend = CountingBackend(backend)
     haves = oracle_haves_for(reference_proof)
     operators = make_lean_operators(backend, haves, config_name)
-    controller = make_lean_controller(config_name)
+    controller = make_lean_controller(config_name, seed)
     detector = ImpasseDetector(
         threshold=float(threshold), patience=int(patience), budget=budget_nodes
     )
@@ -154,7 +185,7 @@ def run_single_lean_config(
             trace=(TraceEvent(kind="error", detail=error[:200], node_index=0),),
         )
     wall_ms = int((time.monotonic() - start) * 1000)
-    return result, wall_ms, error
+    return result, wall_ms, error, backend.calls
 
 
 def make_bench_backend(backend_name: str, timeout: int, pantograph_repl=None):
@@ -176,6 +207,8 @@ def run_lean_bench(
     patience: int = FROZEN_IMPASSE_PATIENCE,
     backend_name: str = "leaninteract",
     pantograph_repl=None,
+    run=None,
+    seed: int = 0,
 ):
     ordered = [str(item) for item in config_names]
     backend = make_bench_backend(backend_name, int(timeout), pantograph_repl)
@@ -218,8 +251,9 @@ def run_lean_bench(
                 )
                 wall_ms = 0
                 error = reset_error
+                lean_calls = 0
             else:
-                result, wall_ms, error = run_single_lean_config(
+                result, wall_ms, error, lean_calls = run_single_lean_config_measured(
                     backend,
                     theorem,
                     reference,
@@ -229,10 +263,28 @@ def run_lean_bench(
                     threshold,
                     patience,
                     shared,
+                    seed,
                 )
             results[config_name][name] = result
             walls[config_name][name] = wall_ms
             errors[config_name][name] = error
+            if run is not None:
+                run.append_result(
+                    {
+                        "problem": name,
+                        "family": str(entry["family"]),
+                        "config": config_name,
+                        "solved": bool(result.success),
+                        "nodes": int(result.nodes),
+                        "lean_calls": int(lean_calls),
+                        "wall_seconds": wall_ms / 1000.0,
+                        "budget_nodes": int(budget_nodes),
+                        "seed": int(seed),
+                        "error": error,
+                        "impasse_count": int(result.impasse_count),
+                        "operator_uses": int(result.operator_uses),
+                    }
+                )
     return results, walls, errors
 
 

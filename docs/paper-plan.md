@@ -159,14 +159,15 @@ ICML 2027（約 2027 年 1 月底截稿）時間太緊，**不建議**當主投�
 3. **計算 Gap_B**，用 B0 證明器在原版與提示版上各取樣 k 次。依 Gap 門檻分出 insight 題，並為每題配一題 routine 對照（陳述長度、家族、原版解題率相近）。
 4. **污染審計**：Mathlib 子字串比對（沿用現有腳本，修掉短陳述被略過的 bug）；對 miniF2F、PutnamBench 做重疊檢查；做 memorization probe（給定理名稱，看模型能不能補出陳述）；比較原版與擾動版的效能落差。
 5. **Split**：calibration 20 題（調 impasse 門檻）、dev 30 題（開發算子 prompt）、**test ≥100 題（預註冊後只跑一次）**，並另設一個 operator-design split：test 中有些家族不出現在 dev。
-6. **第二位標註者**：只用來報告「非平凡輔助」的人工 κ。找一位同儕，或用 LLM 當第二位標註者並揭露此事，由你最後裁決。這是輔助指標，主定義仍是 Gap。
+6. **不做人工標註**（2026-11-02 確認：沒有標註者）。「非平凡輔助」完全由 hint-gap 定義，不報告人工 κ。論文的限制段要寫清楚：insight 的判定是操作化定義，不是人類判斷。
 
-### 5.4 算力預估（W1 要用實測取代）
+### 5.4 算力預估（**僅 Mac M5 / 24GB**，2026-11-02 決定：不動用伺服器與桌機）
 
-- 主實驗規模：約 200 題 × 8 種設定 × 32 次取樣 × 約 1.5k token，約 77M token。16× 預算只在子集上跑。
-- 4× RTX A4000 跑 vLLM 加 7B 證明器，粗估總吞吐量數千 token/s，約一兩天 GPU 時間。Lean 驗證吃 CPU，跑在 EPYC 上。
-- **待確認**：`AGENTS.md` 寫 RTX 5060，`research-design.md` 寫 EPYC + 4× A4000。請確認實際可用的機器（見 §10）。
-- Benchmark 註明 M5、MPS／CPU、GPU 型號與耗時（依 AGENTS.md）。所有 seed 都固定。
+- 底層證明器改用 **MLX 4-bit 量化的 7B 證明器**（`mlx-lm` 已安裝於 conda 環境 `mathesis`，GPU 可用）。權重約 4–5 GB，佔得下 24GB 統一記憶體。
+- 吞吐量**尚未實測**（要先下載權重，見 §10）。在實測前，不估 GPU 時數。
+- 因為吞吐量有限，主實驗規模要縮：取樣次數 k 從 32 降到 8（B0 pass@8 為主指標），16× 預算只在 10–20 題子集上跑。實際 k 由 W1 實測決定。
+- Lean 驗證吃 CPU，M5 的效能核心足以應付；Lean 與 Mathlib 已在 `lean/.lake` 建好（7.2 GB，已排除於 git）。
+- Benchmark 註明 M5、MPS、耗時（依 AGENTS.md）。所有 seed 都固定。
 
 ---
 
@@ -273,11 +274,17 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 3. **第二位標註者**：有沒有同儕可以標約 50 題？沒有的話就用 LLM 加揭露。
 4. **作者與單位**：會影響 OSF 預註冊和 workshop 投稿。
 
-## 11. 下兩週的具體任務（P0）
+## 11. P0 執行狀態（2026-11-02）
 
-1. 初始 commit（等你同意）。
-2. `src/mathesis/experiment.py`、`lean_bench.py`：結果寫成 `runs/<timestamp>/results.jsonl` 加 `manifest.json`（commit hash、seed、Lean 與 Mathlib 版本、硬體、耗時）。
-3. 跑 `MATHESIS_PANTOGRAPH=1`、`MATHESIS_LEAN_INTERACT=1`、`MATHESIS_KERNEL_TESTS=1` 的 gated 測試，修好壞掉的部分。
-4. 修 impasse 分數的單調 budget 偏誤；`choose()` 改成可插拔的策略。
-5. 部署底層證明器（vLLM 或 llama.cpp），做 miniF2F 子集的 G0 檢查。
-6. 修 `scripts/contamination_audit.py` 中短陳述被略過的 bug，並輸出結果檔。
+| # | 項目 | 狀態 |
+|---|---|---|
+| 1 | 初始 commit | ✅ `debfb76`（95 個檔案，PDF 與 `.lake` 排除） |
+| 2 | 實驗管線：`runs/<時間>_<指令>/` 含 `manifest.json`（commit、seed、Lean／Mathlib 版本、平台）、`results.jsonl`、`summary.json` | ✅ 已實作，pilot 已跑通；lean-bench 路徑尚未以真實 Lean 端到端跑過 |
+| 3 | 修 impasse 單調 budget 偏誤；`choose()` 可插拔（新增 `RandomCandidateSelector`） | ✅ 已完成，但**有副作用**，見下 |
+| 4 | 修 `contamination_audit.py` 短陳述略過的 bug，輸出 JSON | ✅ 50/50 題都已檢查（原本 46/50） |
+| 5 | gated Lean／Pantograph 測試 | ⏳ 執行中 |
+| 6 | 底層證明器部署（MLX）、miniF2F 子集的 G0 檢查 | ⏸ 等你確認下載權重 |
+
+**重要發現（必讀）**：把 impasse 的 budget 權重改成 0 之後，**pilot 上 Mathesis 的 `impasse_count` 全部為 0**（已用目前程式碼重跑確認）。也就是說，目前的 "Mathesis" 在 pilot 上等同於不加控制的搜尋。這是修 bug 的直接後果，不是新 bug。權重必須在 calibration split 上重新校準，這一步不能用 test 題做。在校準完成前，任何「Mathesis 勝過 baseline」的說法都不成立。
+
+**環境**：conda 環境 `mathesis`（`environment.yml`，Python 3.13，含 `mlx-lm`、`pytest`），依 AGENTS.md 建立，不使用 base。

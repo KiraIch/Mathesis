@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 from mathesis.backend import MockLeanBackend
@@ -10,6 +11,7 @@ from mathesis.controller import (
 )
 from mathesis.impasse import ImpasseDetector
 from mathesis.operators import AddSubgoalOperator, AddSymbolOperator
+from mathesis.runlog import CountingBackend
 from mathesis.search import breadth_first_search
 from mathesis.types import PilotProblem, SearchResult
 
@@ -46,8 +48,11 @@ def default_problems_path() -> Path:
     return default_repo_root() / "benchmark" / "pilot" / "problems.json"
 
 
-def make_stack(budget_nodes: int) -> tuple[MockLeanBackend, list, ImpasseDetector]:
-    backend = MockLeanBackend()
+def make_stack(
+    budget_nodes: int, backend=None
+) -> tuple[MockLeanBackend, list, ImpasseDetector]:
+    if backend is None:
+        backend = MockLeanBackend()
     operators = [AddSubgoalOperator(backend), AddSymbolOperator(backend)]
     detector = ImpasseDetector(budget=budget_nodes)
     return backend, operators, detector
@@ -59,9 +64,21 @@ def run_single(
     budget_wall_ms: int = 5000,
     detector: ImpasseDetector | None = None,
 ) -> SearchResult:
-    backend, operators, default_detector = make_stack(problem.budget_nodes)
+    return run_single_measured(problem, controller, budget_wall_ms, detector)[0]
+
+
+def run_single_measured(
+    problem: PilotProblem,
+    controller,
+    budget_wall_ms: int = 5000,
+    detector: ImpasseDetector | None = None,
+) -> tuple[SearchResult, int, float]:
+    """Like run_single, but also returns (Lean backend calls, wall-clock seconds)."""
+    counted = CountingBackend(MockLeanBackend())
+    backend, operators, default_detector = make_stack(problem.budget_nodes, counted)
     active_detector = detector if detector is not None else default_detector
-    return breadth_first_search(
+    start = time.monotonic()
+    result = breadth_first_search(
         backend=backend,
         theorem=problem.theorem,
         operators=operators,
@@ -71,11 +88,14 @@ def run_single(
         budget_heartbeats=problem.budget_nodes * 20,
         budget_wall_ms=budget_wall_ms,
     )
+    return result, counted.calls, time.monotonic() - start
 
 
 def run_pilot(
     problems_path: str | Path | None = None,
     budget_wall_ms: int = 5000,
+    run=None,
+    seed: int = 0,
 ) -> dict[str, dict[str, SearchResult]]:
     if problems_path is None:
         problems_path = default_problems_path()
@@ -89,15 +109,33 @@ def run_pilot(
     ]:
         per_problem: dict[str, SearchResult] = {}
         for problem in problems:
-            fresh_controller = recreate_controller(config_name)
-            per_problem[problem.name] = run_single(
+            fresh_controller = recreate_controller(config_name, seed)
+            outcome, lean_calls, wall_seconds = run_single_measured(
                 problem, fresh_controller, budget_wall_ms=budget_wall_ms
             )
+            per_problem[problem.name] = outcome
+            if run is not None:
+                run.append_result(
+                    {
+                        "problem": problem.name,
+                        "family": problem.family,
+                        "config": config_name,
+                        "solved": bool(outcome.success),
+                        "nodes": int(outcome.nodes),
+                        "lean_calls": int(lean_calls),
+                        "wall_seconds": wall_seconds,
+                        "budget_nodes": int(problem.budget_nodes),
+                        "seed": int(seed),
+                        "error": "",
+                        "impasse_count": int(outcome.impasse_count),
+                        "operator_uses": int(outcome.operator_uses),
+                    }
+                )
         results[config_name] = per_problem
     return results
 
 
-def recreate_controller(name: str):
+def recreate_controller(name: str, seed: int = 0):
     if name == "Mathesis":
         return ImpasseController()
     if name == "AlwaysRestructure":
@@ -105,7 +143,7 @@ def recreate_controller(name: str):
     if name == "FixedSchedule":
         return FixedScheduleController(interval=5)
     if name == "RandomTrigger":
-        return RandomTriggerController(probability=0.2, seed=0)
+        return RandomTriggerController(probability=0.2, seed=int(seed))
     raise ValueError("unknown configuration " + repr(name))
 
 

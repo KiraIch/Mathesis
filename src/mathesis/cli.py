@@ -34,6 +34,7 @@ from mathesis.lean_pilot import (
     default_lean_pilot_path,
     load_lean_pilot,
 )
+from mathesis.runlog import start_run
 from mathesis.search import breadth_first_search
 from mathesis.types import PilotProblem
 
@@ -80,13 +81,31 @@ def run_smoke() -> int:
     return 0
 
 
-def run_pilot_command() -> int:
+def summarize_for_log(results) -> dict:
+    summary = {}
+    for config_name, per_problem in results.items():
+        total = len(per_problem)
+        solved = sum(1 for item in per_problem.values() if item.success)
+        summary[config_name] = {
+            "solved": solved,
+            "total": total,
+            "solve_rate": (solved / total) if total else 0.0,
+        }
+    return summary
+
+
+def run_pilot_command(out: str = "runs", seed: int = 0) -> int:
     path = default_problems_path()
     problems = load_problems(path)
-    results = run_pilot(path)
+    run = start_run(
+        Path(out), "pilot", {"problems_path": str(path), "out": str(out)}, int(seed)
+    )
+    results = run_pilot(path, run=run, seed=int(seed))
+    run.finish(summarize_for_log(results))
     print("pilot problems: " + str(len(problems)))
     print(format_per_problem(problems, results))
     print(format_summary_table(results))
+    print("run dir: " + str(run.path))
     return 0
 
 
@@ -313,6 +332,8 @@ def run_lean_bench_command(
     patience: int,
     backend_name: str = "leaninteract",
     pantograph_repl=None,
+    out: str = "runs",
+    seed: int = 0,
 ) -> int:
     raw = [item.strip() for item in str(configs_text).split(",")]
     configs = [item for item in raw if item]
@@ -336,6 +357,24 @@ def run_lean_bench_command(
         + " patience="
         + str(patience)
     )
+    run = start_run(
+        Path(out),
+        "lean-bench",
+        {
+            "limit": limit,
+            "budget_nodes": budget_nodes,
+            "timeout": timeout,
+            "configs": configs,
+            "family": family,
+            "split": split,
+            "impasse_threshold": threshold,
+            "impasse_patience": patience,
+            "backend": backend_name,
+            "pantograph_repl": pantograph_repl,
+            "out": str(out),
+        },
+        int(seed),
+    )
     try:
         results, walls, errors = run_lean_bench(
             problems,
@@ -346,12 +385,18 @@ def run_lean_bench_command(
             patience=patience,
             backend_name=backend_name,
             pantograph_repl=pantograph_repl,
+            run=run,
+            seed=int(seed),
         )
     except Exception as exc:
         print("lean bench failed: " + str(exc))
+        run.finish({"error": str(exc)})
+        print("run dir: " + str(run.path))
         return 1
+    run.finish(summarize_for_log(results))
     print(format_lean_bench_rows(problems, results, walls, errors))
     print(format_lean_bench_summary(results, walls))
+    print("run dir: " + str(run.path))
     return 0
 
 
@@ -397,7 +442,9 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="mathesis")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("smoke")
-    sub.add_parser("pilot")
+    pilot_parser = sub.add_parser("pilot")
+    pilot_parser.add_argument("--out", type=str, default="runs")
+    pilot_parser.add_argument("--seed", type=int, default=0)
     sub.add_parser("features")
     sub.add_parser("lean-pilot")
     replay_parser = sub.add_parser("lean-replay")
@@ -425,11 +472,13 @@ def main(argv=None) -> int:
         choices=["leaninteract", "pantograph"],
     )
     bench_parser.add_argument("--pantograph-repl", type=str, default=None)
+    bench_parser.add_argument("--out", type=str, default="runs")
+    bench_parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args(argv)
     if args.command == "smoke":
         return run_smoke()
     if args.command == "pilot":
-        return run_pilot_command()
+        return run_pilot_command(args.out, args.seed)
     if args.command == "features":
         return run_features()
     if args.command == "lean-pilot":
@@ -450,6 +499,8 @@ def main(argv=None) -> int:
             args.impasse_patience,
             args.backend,
             args.pantograph_repl,
+            args.out,
+            args.seed,
         )
     return 0
 
