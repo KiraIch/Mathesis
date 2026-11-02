@@ -288,7 +288,13 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 
 **證明器權重**：`mlx-community/DeepSeek-Prover-V2-7B-4bit`（HF，3.90 GB，無 gate；HF 頁面授權欄位為空，使用前要再確認授權）。存於 HF cache（`~/.cache/huggingface`），不在 repo 內。**已下載並可載入**（snapshot `851514b6`）。
 
-**W1 初步吞吐量（M5，MLX，單流、未批次）**：約 **9.8 tok/s**（含首次呼叫暖機，數字偏保守）。以計畫的規模（200 題 × k=8 × 約 1.5k token）推算約 2.4M token，單流需約 68 小時，**不可行**。下一步要評估 mlx-lm 的批次生成，以及縮小 k 或題數。生成品質也要看：單次樣本輸出有大量重複的 `nlinarith` 行，G0 時要檢查它是否真的能產生可用證明。**注意**：它是 CoT 證明器，計畫的主實驗要非 CoT，所以這只是 G0 的起點，W1 量測後再定案。
+**W1 初步吞吐量（M5，MLX，單流、未批次）**：約 **9.8 tok/s**（含首次呼叫暖機，數字偏保守）。以計畫的規模（200 題 × k=8 × 約 1.5k token）推算約 2.4M token，單流需約 68 小時，**不可行**。生成品質也要看：單次樣本輸出有大量重複的 `nlinarith` 行，G0 時要檢查它是否真的能產生可用證明。
+
+**批次生成（2026-11-03 量測，`mlx_lm.generate.batch_generate`）**：單流約 23 tok/s；batch 4 約 94 tok/s；batch 8 約 95 tok/s（總吞吐量，約為單流的 4 倍）。之前的 9.8 tok/s 是暖機偏差，作廢。
+
+**縮小後的規模（取代 §5.4 的原計畫）**：50 題（`benchmark/lean_pilot`）× 每題取樣 k=8 × 最長 1024 token，約 400k token 上限，約 70 分鐘。先做 **B0（pass@1 與 pass@8）**，這是預印本的核心數據。Mathesis 的控制層仍然在 calibration 之後才會跑。
+
+**驗證前提**：Lean 驗證要先通過兩個控制測試，才採信任何 pass 數字：(C1) 參考證明必須全部通過；(C2) 錯誤證明（例如 `sorry`）必須全部被拒絕。**注意**：它是 CoT 證明器，計畫的主實驗要非 CoT，所以這只是 G0 的起點，W1 量測後再定案。
 
 **留到後續階段的 review 項目**：`RandomCandidateSelector` 尚未接進任何 config（B4 要用，屬 P2）；lean-bench 的 `FROZEN_IMPASSE_THRESHOLD = 0.3` 是針對舊分數凍結的，要重新校準；`generic_match` 只看字元長度，規則過於粗略；`default_repo_root` 在兩處各定義一次，非 editable 安裝會指錯位置。
 

@@ -1,4 +1,5 @@
 import argparse
+import json
 import shutil
 import subprocess
 import sys
@@ -37,6 +38,7 @@ from mathesis.lean_pilot import (
     default_lean_pilot_path,
     load_lean_pilot,
 )
+from mathesis import llm_baseline
 from mathesis.runlog import start_run
 from mathesis.search import breadth_first_search
 from mathesis.types import PilotProblem
@@ -444,6 +446,76 @@ def run_lean_bench_command(
     return 0
 
 
+def run_b0_command(
+    k: int,
+    limit,
+    max_tokens: int,
+    seed: int = 0,
+    out: str = "runs",
+    controls: bool = False,
+) -> int:
+    if k < 1 or max_tokens < 1 or (limit is not None and limit < 1):
+        print("b0 needs --k >= 1, --max-tokens >= 1 and --limit >= 1")
+        return 2
+    problems = llm_baseline.load_b0_problems(None if controls else limit)
+    base_args = {
+        "model": llm_baseline.MODEL_NAME,
+        "k": k,
+        "limit": limit,
+        "max_tokens": max_tokens,
+        "temperature": llm_baseline.DEFAULT_TEMP,
+        "prompt_template": llm_baseline.PROMPT_TEMPLATE,
+        "eval_header": llm_baseline.EVAL_HEADER,
+        "lean_command": llm_baseline.lean_verify_command("<candidate.lean>"),
+        "lean_cwd": str(llm_baseline.default_lean_dir()),
+        "lean_timeout_s": llm_baseline.LEAN_TIMEOUT_S,
+        "out": str(out),
+    }
+    if controls:
+        base_args["control_problems"] = list(llm_baseline.CONTROL_PROBLEMS)
+        run = open_run(out, "b0-controls", base_args, int(seed))
+        if run is None:
+            return 1
+        report = None
+        try:
+            with run.guard() as outcome:
+                report = llm_baseline.run_controls(run, problems)
+                (run.path / "controls.json").write_text(
+                    json.dumps(report, sort_keys=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                outcome.summary = {
+                    "C1": report["C1"]["ok"],
+                    "C2": report["C2"]["ok"],
+                    "ok": report["ok"],
+                }
+        except Exception as exc:
+            print("b0 controls failed: " + str(exc))
+            print("run dir: " + str(run.path))
+            return 1
+        print(llm_baseline.format_controls(report))
+        print("run dir: " + str(run.path))
+        return 0 if report["ok"] else 1
+    print("b0 problems: " + str(len(problems)))
+    print("b0 model: " + llm_baseline.MODEL_NAME)
+    print("b0 k: " + str(k) + " max_tokens: " + str(max_tokens))
+    run = open_run(out, "b0", base_args, int(seed))
+    if run is None:
+        return 1
+    try:
+        with run.guard() as outcome:
+            outcome.summary = llm_baseline.run_b0(
+                run, problems, k=k, max_tokens=max_tokens, seed=int(seed)
+            )
+    except Exception as exc:
+        print("b0 failed: " + str(exc))
+        print("run dir: " + str(run.path))
+        return 1
+    print(llm_baseline.format_b0_summary(outcome.summary))
+    print("run dir: " + str(run.path))
+    return 0
+
+
 def run_features() -> int:
     detector = ImpasseDetector(threshold=0.2, patience=2, window=5, budget=10)
     trace = [
@@ -518,6 +590,19 @@ def main(argv=None) -> int:
     bench_parser.add_argument("--pantograph-repl", type=str, default=None)
     bench_parser.add_argument("--out", type=str, default="runs")
     bench_parser.add_argument("--seed", type=int, default=0)
+    b0_parser = sub.add_parser("b0")
+    b0_parser.add_argument("--k", type=int, default=llm_baseline.DEFAULT_K)
+    b0_parser.add_argument("--limit", type=int, default=None)
+    b0_parser.add_argument(
+        "--max-tokens", type=int, default=llm_baseline.DEFAULT_MAX_TOKENS
+    )
+    b0_parser.add_argument("--seed", type=int, default=0)
+    b0_parser.add_argument("--out", type=str, default="runs")
+    b0_parser.add_argument(
+        "--controls",
+        action="store_true",
+        help="run only the validation controls C1/C2 (no model, no generation)",
+    )
     args = parser.parse_args(argv)
     if args.command == "smoke":
         return run_smoke()
@@ -545,6 +630,10 @@ def main(argv=None) -> int:
             args.pantograph_repl,
             args.out,
             args.seed,
+        )
+    if args.command == "b0":
+        return run_b0_command(
+            args.k, args.limit, args.max_tokens, args.seed, args.out, args.controls
         )
     return 0
 
