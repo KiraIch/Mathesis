@@ -282,8 +282,15 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 | 2 | 實驗管線：`runs/<時間>_<指令>/` 含 `manifest.json`（commit、seed、Lean／Mathlib 版本、平台）、`results.jsonl`、`summary.json` | ✅ 已實作，pilot 已跑通；lean-bench 路徑尚未以真實 Lean 端到端跑過 |
 | 3 | 修 impasse 單調 budget 偏誤；`choose()` 可插拔（新增 `RandomCandidateSelector`） | ✅ 已完成，但**有副作用**，見下 |
 | 4 | 修 `contamination_audit.py` 短陳述略過的 bug，輸出 JSON | ✅ 50/50 題都已檢查（原本 46/50） |
-| 5 | gated Lean／Pantograph 測試 | ⏳ 執行中 |
-| 6 | 底層證明器部署（MLX）、miniF2F 子集的 G0 檢查 | ⏸ 等你確認下載權重 |
+| 5 | gated Lean／Pantograph 測試 | ✅ 全部通過（kernel 10、LeanInteract 5、Pantograph 28、lean-bench 24，0 失敗）。注意：這次是在 review 修正之前跑的，修正後還沒重跑 gated 測試 |
+| 6 | 底層證明器部署（MLX）、miniF2F 子集的 G0 檢查 | ⏳ 權重下載中（見下） |
+| 7 | 審查 review 發現的 12 點 | ✅ 修了其中 8 點（manifest、失敗時寫 summary、lean_calls 口徑、每題派生 seed、審計 stem bug、dev extra 等）；其餘留到後續階段（見下） |
+
+**證明器權重**：`mlx-community/DeepSeek-Prover-V2-7B-4bit`（HF，3.90 GB，無 gate；HF 頁面授權欄位為空，使用前要再確認授權）。存於 HF cache（`~/.cache/huggingface`），不在 repo 內。**已下載並可載入**（snapshot `851514b6`）。
+
+**W1 初步吞吐量（M5，MLX，單流、未批次）**：約 **9.8 tok/s**（含首次呼叫暖機，數字偏保守）。以計畫的規模（200 題 × k=8 × 約 1.5k token）推算約 2.4M token，單流需約 68 小時，**不可行**。下一步要評估 mlx-lm 的批次生成，以及縮小 k 或題數。生成品質也要看：單次樣本輸出有大量重複的 `nlinarith` 行，G0 時要檢查它是否真的能產生可用證明。**注意**：它是 CoT 證明器，計畫的主實驗要非 CoT，所以這只是 G0 的起點，W1 量測後再定案。
+
+**留到後續階段的 review 項目**：`RandomCandidateSelector` 尚未接進任何 config（B4 要用，屬 P2）；lean-bench 的 `FROZEN_IMPASSE_THRESHOLD = 0.3` 是針對舊分數凍結的，要重新校準；`generic_match` 只看字元長度，規則過於粗略；`default_repo_root` 在兩處各定義一次，非 editable 安裝會指錯位置。
 
 **重要發現（必讀）**：把 impasse 的 budget 權重改成 0 之後，**pilot 上 Mathesis 的 `impasse_count` 全部為 0**（已用目前程式碼重跑確認）。也就是說，目前的 "Mathesis" 在 pilot 上等同於不加控制的搜尋。這是修 bug 的直接後果，不是新 bug。權重必須在 calibration split 上重新校準，這一步不能用 test 題做。在校準完成前，任何「Mathesis 勝過 baseline」的說法都不成立。
 
