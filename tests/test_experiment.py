@@ -85,7 +85,13 @@ class ExperimentTest(unittest.TestCase):
                 "reference proof failed for " + problem.name,
             )
 
-    def test_natural_impasse_path(self):
+    def test_default_detector_budget_weight_is_zero(self):
+        # deliberate: the budget-fraction term is off by default pending calibration
+        self.assertEqual(ImpasseDetector().budget_weight, 0.0)
+
+    def test_natural_impasse_path_with_budget_weight(self):
+        # The shipped default budget_weight is 0.0 pending calibration; this test
+        # injects 0.2 explicitly, so it does not cover the default detector.
         root = Path(__file__).resolve().parents[1]
         path = root / "benchmark" / "pilot" / "problems.json"
         problems = load_problems(path)

@@ -4,7 +4,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# generic_match rule: a body hit is generic when the collapsed statement body is shorter than 15 characters (trivial shapes such as "P → P" or "n ≤ n" match by chance, so they are not memorization evidence).
+# generic_match rule: a body hit is generic when the collapsed statement body is shorter than GENERIC_BODY_CHARS characters (trivial shapes such as "P → P" or "n ≤ n" match by chance, so they are not memorization evidence).
 GENERIC_BODY_CHARS = 15
 HIT_CAP = 3
 
@@ -31,21 +31,54 @@ def statement_body(theorem: str) -> str:
     return theorem.strip()
 
 
-def problem_keys(entry: dict) -> tuple:
-    name = str(entry["name"])
+def stem_for_name(name: str) -> str:
+    """Searchable stem: drop "lean_", then the family prefix (text before the first
+    underscore), because Mathlib spells "nat_zero_add" as "Nat.zero_add"."""
     stem = name[5:] if name.startswith("lean_") else name
+    head, sep, tail = stem.partition("_")
+    return tail if sep and tail else stem
+
+
+def is_generic_body(body: str) -> bool:
+    return len(body) < GENERIC_BODY_CHARS
+
+
+def generic_note() -> str:
+    return "body hit is generic (body under " + str(GENERIC_BODY_CHARS) + " characters); not memorization evidence"
+
+
+def problem_keys(entry: dict) -> tuple:
+    stem = stem_for_name(str(entry["name"]))
     body = collapse(statement_body(str(entry["theorem"])))
     return stem, body
 
 
+def unique_path(path: Path, exists=None) -> Path:
+    """Return path, or path with _1, _2, ... before the suffix when it already exists
+    (same collision handling as runlog.start_run)."""
+    check = exists if exists is not None else Path.exists
+    candidate = path
+    index = 0
+    while check(candidate):
+        index += 1
+        candidate = path.with_name(path.stem + "_" + str(index) + path.suffix)
+    return candidate
+
+
+def resolve_out_path(out: Path, cwd: Path | None = None) -> Path:
+    """A relative --out is resolved against the current working directory (not the repo root)."""
+    base = cwd if cwd is not None else Path.cwd()
+    return out if out.is_absolute() else base / out
+
+
 def default_out_path() -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return repo_root() / "runs" / "contamination" / (stamp + ".json")
+    return unique_path(repo_root() / "runs" / "contamination" / (stamp + ".json"))
 
 
 def parse_args(argv: list) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Heuristic contamination audit for the Lean pilot benchmark.")
-    parser.add_argument("--out", type=Path, default=None, help="JSON result path (default: runs/contamination/<UTC timestamp>.json)")
+    parser.add_argument("--out", type=Path, default=None, help="JSON result path; a relative path is resolved against the current working directory (default: <repo>/runs/contamination/<UTC timestamp>.json, with _1, _2 suffix on collision)")
     return parser.parse_args(argv)
 
 
@@ -58,8 +91,8 @@ def audit(out_path: Path) -> int:
     frag_hits: dict = {str(entry["name"]): [] for entry, _ in keys}
     files = sorted(mathlib_dir.rglob("*.lean")) if mathlib_dir.is_dir() else []
     if not files:
-        print("mathlib source not found at " + str(mathlib_dir))
-        print("heuristic audit skipped; flags below are judgment-only")
+        print("mathlib source not found at " + str(mathlib_dir) + "; no .lean files to search, audit not run, nothing written", file=sys.stderr)
+        return 1
     for path in files:
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
@@ -80,20 +113,18 @@ def audit(out_path: Path) -> int:
     novel_total = 0
     records = []
     checked_total = 0
-    for entry, (_, body) in keys:
+    for entry, (stem, body) in keys:
         label = str(entry["name"])
         if str(entry.get("novelty")) in ("perturbed", "novel"):
             novel_total += 1
-        checked = bool(files) and bool(body)
+        checked = bool(body)
         if checked:
             checked_total += 1
-        generic = bool(frag_hits[label]) and len(body) < GENERIC_BODY_CHARS
-        if not files:
-            note = "mathlib source not found; nothing searched"
-        elif not body:
+        generic = bool(frag_hits[label]) and is_generic_body(body)
+        if not body:
             note = "empty statement body; body not searched"
         elif generic:
-            note = "body hit is generic (body under 15 characters); not memorization evidence"
+            note = generic_note()
         elif frag_hits[label]:
             note = "body hit on full statement body; judgment call"
         else:
@@ -101,6 +132,7 @@ def audit(out_path: Path) -> int:
         records.append({
             "name": label,
             "checked": checked,
+            "stem_searched": stem,
             "stem_hits": list(name_hits[label]),
             "body_hits": list(frag_hits[label]),
             "generic_match": generic,
@@ -144,4 +176,5 @@ def audit(out_path: Path) -> int:
 
 if __name__ == "__main__":
     args = parse_args(sys.argv[1:])
-    raise SystemExit(audit(args.out if args.out is not None else default_out_path()))
+    out = resolve_out_path(args.out) if args.out is not None else default_out_path()
+    raise SystemExit(audit(out))

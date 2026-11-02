@@ -1,15 +1,18 @@
 """Reproducible run artifacts: manifest.json, results.jsonl, summary.json."""
 
+import hashlib
 import json
 import platform
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 UNKNOWN = "unknown"
 GIT_TIMEOUT_S = 10
+DIFF_HASH_CHARS = 12
 
 
 def default_repo_root() -> Path:
@@ -24,12 +27,21 @@ def _run_git(repo_dir: Path, args: list[str]) -> str | None:
             cwd=str(repo_dir),
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=GIT_TIMEOUT_S,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         print("runlog: git " + " ".join(args) + " failed: " + str(exc), file=sys.stderr)
         return None
     if completed.returncode != 0:
+        summary = completed.stderr.strip().splitlines()
+        detail = summary[0] if summary else "no stderr"
+        print(
+            "runlog: git " + " ".join(args) + " exited "
+            + str(completed.returncode) + ": " + detail,
+            file=sys.stderr,
+        )
         return None
     return completed.stdout.strip()
 
@@ -45,6 +57,26 @@ def git_dirty(repo_dir: Path) -> bool | None:
     if out is None:
         return None
     return out != ""
+
+
+def git_diff_hash(repo_dir: Path) -> str:
+    """Short sha256 of `git diff HEAD` (tracked changes only), or "unknown".
+
+    Identifies which uncommitted changes a run was produced with; untracked
+    files are not part of the diff.
+    """
+    out = _run_git(repo_dir, ["diff", "HEAD"])
+    if out is None:
+        return UNKNOWN
+    return hashlib.sha256(out.encode("utf-8", errors="replace")).hexdigest()[
+        :DIFF_HASH_CHARS
+    ]
+
+
+def derive_seed(seed: int, problem: str, config: str) -> int:
+    """Stable per-(problem, config) seed; not hash(), which is randomized per process."""
+    text = str(seed) + ":" + str(problem) + ":" + str(config)
+    return int.from_bytes(hashlib.sha256(text.encode("utf-8")).digest()[:8], "big")
 
 
 def lean_toolchain(repo_dir: Path) -> str:
@@ -72,7 +104,13 @@ def mathlib_rev(repo_dir: Path) -> str:
 
 
 class CountingBackend:
-    """Transparent proxy that counts calls to the Lean backend."""
+    """Transparent proxy that counts calls to the Lean backend.
+
+    lean_calls definition (mock pilot and lean-bench alike): every reset, apply
+    and check_proof call needed to produce one (problem, config) result. The
+    initial reset counts too; in lean-bench it is shared across configs, so it
+    is counted once and attributed to every config's run.
+    """
 
     COUNTED = ("reset", "apply", "check_proof")
 
@@ -91,6 +129,13 @@ class CountingBackend:
         return attr
 
 
+class RunOutcome:
+    """Mutable holder the guarded block fills in; summary is kept only on success."""
+
+    def __init__(self) -> None:
+        self.summary: dict = {}
+
+
 class RunDir:
     def __init__(self, path: Path, started: float) -> None:
         self.path = Path(path)
@@ -106,8 +151,29 @@ class RunDir:
             handle.write(line + "\n")
             handle.flush()
 
-    def finish(self, summary: dict) -> None:
+    @contextmanager
+    def guard(self):
+        """Always write summary.json: status ok/error/interrupted, then re-raise."""
+        outcome = RunOutcome()
+        status, error = "error", "run did not complete"
+        try:
+            yield outcome
+            status, error = "ok", ""
+        except KeyboardInterrupt:
+            status, error = "interrupted", "KeyboardInterrupt"
+            raise
+        except Exception as exc:
+            status, error = "error", type(exc).__name__ + ": " + str(exc)
+            raise
+        finally:
+            self.finish(
+                outcome.summary if status == "ok" else {}, status=status, error=error
+            )
+
+    def finish(self, summary: dict, status: str = "ok", error: str = "") -> None:
         payload = {
+            "status": status,
+            "error": error,
             "summary": summary,
             "wall_clock_seconds": time.monotonic() - self._started,
         }
@@ -149,6 +215,7 @@ def start_run(
         "seed": int(seed),
         "git_commit": git_commit(repo),
         "git_dirty": git_dirty(repo),
+        "git_diff_hash": git_diff_hash(repo),
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "machine": platform.machine(),

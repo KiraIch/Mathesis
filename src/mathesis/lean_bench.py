@@ -10,7 +10,7 @@ from mathesis.controller import (
 from mathesis.impasse import ImpasseDetector
 from mathesis.lean_pilot import default_lean_pilot_path, load_lean_pilot
 from mathesis.operators import OracleHaveOperator, TemplateHaveOperator
-from mathesis.runlog import CountingBackend
+from mathesis.runlog import CountingBackend, derive_seed
 from mathesis.search import breadth_first_search
 from mathesis.types import Cost, SearchResult, TraceEvent
 
@@ -149,8 +149,13 @@ def run_single_lean_config_measured(
     patience: int = FROZEN_IMPASSE_PATIENCE,
     initial_state=None,
     seed: int = 0,
+    base_calls: int = 0,
 ) -> tuple[SearchResult, int, str, int]:
-    """Like run_single_lean_config, but also returns the number of Lean backend calls."""
+    """Like run_single_lean_config, but also returns the number of Lean backend calls.
+
+    base_calls is the shared initial reset done outside this call; it is added so
+    the count follows the CountingBackend definition (reset included).
+    """
     backend = CountingBackend(backend)
     haves = oracle_haves_for(reference_proof)
     operators = make_lean_operators(backend, haves, config_name)
@@ -185,7 +190,7 @@ def run_single_lean_config_measured(
             trace=(TraceEvent(kind="error", detail=error[:200], node_index=0),),
         )
     wall_ms = int((time.monotonic() - start) * 1000)
-    return result, wall_ms, error, backend.calls
+    return result, wall_ms, error, backend.calls + int(base_calls)
 
 
 def make_bench_backend(backend_name: str, timeout: int, pantograph_repl=None):
@@ -220,18 +225,21 @@ def run_lean_bench(
         theorem = str(entry["theorem"])
         reference = [str(item) for item in entry["reference_proof"]]
         wanted_imports = imports_for_entry(entry)
+        # count the shared reset; it is attributed to every config (see CountingBackend)
+        reset_counter = CountingBackend(backend)
         try:
             if hasattr(backend, "imports"):
                 backend.imports = wanted_imports
-                shared = backend.reset(theorem)
+                shared = reset_counter.reset(theorem)
             else:
-                shared = backend.reset(theorem, wanted_imports)
+                shared = reset_counter.reset(theorem, wanted_imports)
         except ValueError as exc:
             shared = None
             reset_error = str(exc)
         else:
             reset_error = ""
         for config_name in ordered:
+            derived = derive_seed(seed, name, config_name)
             if shared is None:
                 cost = Cost(lean_heartbeats=0, search_nodes=0, wall_ms=0)
                 result = SearchResult(
@@ -251,7 +259,7 @@ def run_lean_bench(
                 )
                 wall_ms = 0
                 error = reset_error
-                lean_calls = 0
+                lean_calls = reset_counter.calls
             else:
                 result, wall_ms, error, lean_calls = run_single_lean_config_measured(
                     backend,
@@ -263,7 +271,8 @@ def run_lean_bench(
                     threshold,
                     patience,
                     shared,
-                    seed,
+                    derived,
+                    reset_counter.calls,
                 )
             results[config_name][name] = result
             walls[config_name][name] = wall_ms
@@ -280,6 +289,7 @@ def run_lean_bench(
                         "wall_seconds": wall_ms / 1000.0,
                         "budget_nodes": int(budget_nodes),
                         "seed": int(seed),
+                        "derived_seed": derived,
                         "error": error,
                         "impasse_count": int(result.impasse_count),
                         "operator_uses": int(result.operator_uses),

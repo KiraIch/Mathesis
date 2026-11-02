@@ -11,9 +11,13 @@ from mathesis.controller import (
 )
 from mathesis.impasse import ImpasseDetector
 from mathesis.operators import AddSubgoalOperator, AddSymbolOperator
-from mathesis.runlog import CountingBackend
+from mathesis.runlog import CountingBackend, derive_seed
 from mathesis.search import breadth_first_search
 from mathesis.types import PilotProblem, SearchResult
+
+
+PILOT_CONFIGS = ("Mathesis", "AlwaysRestructure", "FixedSchedule", "RandomTrigger")
+PILOT_BUDGET_WALL_MS = 5000
 
 
 def load_problems(path: str | Path) -> list[PilotProblem]:
@@ -93,7 +97,7 @@ def run_single_measured(
 
 def run_pilot(
     problems_path: str | Path | None = None,
-    budget_wall_ms: int = 5000,
+    budget_wall_ms: int = PILOT_BUDGET_WALL_MS,
     run=None,
     seed: int = 0,
 ) -> dict[str, dict[str, SearchResult]]:
@@ -101,15 +105,12 @@ def run_pilot(
         problems_path = default_problems_path()
     problems = load_problems(problems_path)
     results: dict[str, dict[str, SearchResult]] = {}
-    for config_name in [
-        "Mathesis",
-        "AlwaysRestructure",
-        "FixedSchedule",
-        "RandomTrigger",
-    ]:
+    for config_name in PILOT_CONFIGS:
         per_problem: dict[str, SearchResult] = {}
         for problem in problems:
-            fresh_controller = recreate_controller(config_name, seed)
+            # per-(problem, config) seed so RandomTrigger is not correlated across problems
+            derived = derive_seed(seed, problem.name, config_name)
+            fresh_controller = recreate_controller(config_name, derived)
             outcome, lean_calls, wall_seconds = run_single_measured(
                 problem, fresh_controller, budget_wall_ms=budget_wall_ms
             )
@@ -126,6 +127,7 @@ def run_pilot(
                         "wall_seconds": wall_seconds,
                         "budget_nodes": int(problem.budget_nodes),
                         "seed": int(seed),
+                        "derived_seed": derived,
                         "error": "",
                         "impasse_count": int(outcome.impasse_count),
                         "operator_uses": int(outcome.operator_uses),

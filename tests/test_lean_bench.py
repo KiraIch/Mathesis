@@ -297,6 +297,47 @@ class LeanBenchUnitTest(unittest.TestCase):
         self.assertIn("bfs", summary)
 
 
+class LeanBenchCountingTest(unittest.TestCase):
+    def test_lean_calls_include_shared_reset_and_derived_seed(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        from mathesis import lean_bench
+        from mathesis.runlog import derive_seed, start_run
+
+        class ImportsMock(MockLeanBackend):
+            imports = ()
+
+        entry = {
+            "name": "p_id",
+            "theorem": "P -> P",
+            "family": "prop",
+            "reference_proof": ["intro h", "exact h"],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            run = start_run(Path(tmp), "lean-bench", {}, 5)
+            with mock.patch.object(
+                lean_bench, "make_bench_backend", return_value=ImportsMock()
+            ):
+                lean_bench.run_lean_bench(
+                    [entry], budget_nodes=10, timeout=5, config_names=["bfs"],
+                    run=run, seed=5,
+                )
+            lines = (run.path / "results.jsonl").read_text("utf-8").splitlines()
+        record = json.loads(lines[0])
+        backend = ImportsMock()
+        shared = backend.reset("P -> P")
+        _r, _w, _e, search_calls = lean_bench.run_single_lean_config_measured(
+            backend, "P -> P", entry["reference_proof"], "bfs", 10, 5,
+            initial_state=shared,
+        )
+        # search_calls excludes the shared reset; the record must include it once
+        self.assertEqual(record["lean_calls"], search_calls + 1)
+        self.assertEqual(record["derived_seed"], derive_seed(5, "p_id", "bfs"))
+
+
 @unittest.skipUnless(
     os.environ.get("MATHESIS_LEAN_BENCH") == "1"
     or os.environ.get("MATHESIS_LEAN_INTERACT") == "1",

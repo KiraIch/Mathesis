@@ -5,6 +5,9 @@ description = "Mathesis pilot scaffold with mock Lean backend"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"

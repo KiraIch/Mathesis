@@ -1,6 +1,7 @@
 import argparse
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from mathesis.backend import SubprocessLeanBackend
 from mathesis.controller import (
@@ -10,6 +11,8 @@ from mathesis.controller import (
     RandomTriggerController,
 )
 from mathesis.experiment import (
+    PILOT_BUDGET_WALL_MS,
+    PILOT_CONFIGS,
     default_problems_path,
     format_per_problem,
     format_summary_table,
@@ -94,14 +97,49 @@ def summarize_for_log(results) -> dict:
     return summary
 
 
+def detector_params(detector: ImpasseDetector) -> dict:
+    return {
+        "threshold": detector.threshold,
+        "patience": detector.patience,
+        "window": detector.window,
+        "stall_weight": detector.stall_weight,
+        "duplicate_weight": detector.duplicate_weight,
+        "budget_weight": detector.budget_weight,
+    }
+
+
+def open_run(out: str, command: str, args: dict, seed: int):
+    """start_run, or None after a one-line stderr error when out is not writable."""
+    try:
+        return start_run(Path(out), command, args, seed)
+    except OSError as exc:
+        print(
+            "cannot create run directory under " + str(out) + ": " + str(exc),
+            file=sys.stderr,
+        )
+        return None
+
+
 def run_pilot_command(out: str = "runs", seed: int = 0) -> int:
     path = default_problems_path()
     problems = load_problems(path)
-    run = start_run(
-        Path(out), "pilot", {"problems_path": str(path), "out": str(out)}, int(seed)
+    run = open_run(
+        out,
+        "pilot",
+        {
+            "problems_path": str(path),
+            "out": str(out),
+            "configs": list(PILOT_CONFIGS),
+            "detector": detector_params(ImpasseDetector()),
+            "budget_wall_ms": PILOT_BUDGET_WALL_MS,
+        },
+        int(seed),
     )
-    results = run_pilot(path, run=run, seed=int(seed))
-    run.finish(summarize_for_log(results))
+    if run is None:
+        return 1
+    with run.guard() as outcome:
+        results = run_pilot(path, run=run, seed=int(seed))
+        outcome.summary = summarize_for_log(results)
     print("pilot problems: " + str(len(problems)))
     print(format_per_problem(problems, results))
     print(format_summary_table(results))
@@ -357,8 +395,8 @@ def run_lean_bench_command(
         + " patience="
         + str(patience)
     )
-    run = start_run(
-        Path(out),
+    run = open_run(
+        out,
         "lean-bench",
         {
             "limit": limit,
@@ -369,31 +407,37 @@ def run_lean_bench_command(
             "split": split,
             "impasse_threshold": threshold,
             "impasse_patience": patience,
+            "detector": detector_params(
+                ImpasseDetector(threshold=threshold, patience=patience)
+            ),
+            "budget_wall_ms": int(timeout) * 1000,
             "backend": backend_name,
             "pantograph_repl": pantograph_repl,
             "out": str(out),
         },
         int(seed),
     )
+    if run is None:
+        return 1
     try:
-        results, walls, errors = run_lean_bench(
-            problems,
-            budget_nodes=budget_nodes,
-            timeout=timeout,
-            config_names=configs,
-            threshold=threshold,
-            patience=patience,
-            backend_name=backend_name,
-            pantograph_repl=pantograph_repl,
-            run=run,
-            seed=int(seed),
-        )
+        with run.guard() as outcome:
+            results, walls, errors = run_lean_bench(
+                problems,
+                budget_nodes=budget_nodes,
+                timeout=timeout,
+                config_names=configs,
+                threshold=threshold,
+                patience=patience,
+                backend_name=backend_name,
+                pantograph_repl=pantograph_repl,
+                run=run,
+                seed=int(seed),
+            )
+            outcome.summary = summarize_for_log(results)
     except Exception as exc:
         print("lean bench failed: " + str(exc))
-        run.finish({"error": str(exc)})
         print("run dir: " + str(run.path))
         return 1
-    run.finish(summarize_for_log(results))
     print(format_lean_bench_rows(problems, results, walls, errors))
     print(format_lean_bench_summary(results, walls))
     print("run dir: " + str(run.path))
