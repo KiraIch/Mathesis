@@ -13,8 +13,9 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def load_problems() -> list:
-    path = repo_root() / "benchmark" / "lean_pilot" / "problems.json"
+def load_problems(benchmark_dir: Path | None = None) -> list:
+    base = benchmark_dir if benchmark_dir is not None else repo_root() / "benchmark" / "lean_pilot"
+    path = base / "problems.json"
     raw = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(raw, dict) and "problems" in raw:
         return raw["problems"]
@@ -78,12 +79,13 @@ def default_out_path() -> Path:
 
 def parse_args(argv: list) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Heuristic contamination audit for the Lean pilot benchmark.")
+    parser.add_argument("--benchmark", type=Path, default=None, help="benchmark directory holding problems.json (default: benchmark/lean_pilot)")
     parser.add_argument("--out", type=Path, default=None, help="JSON result path; a relative path is resolved against the current working directory (default: <repo>/runs/contamination/<UTC timestamp>.json, with _1, _2 suffix on collision)")
     return parser.parse_args(argv)
 
 
-def audit(out_path: Path) -> int:
-    problems = load_problems()
+def audit(out_path: Path, benchmark_dir: Path | None = None) -> int:
+    problems = load_problems(benchmark_dir)
     root = repo_root()
     mathlib_dir = root / "lean" / ".lake" / "packages" / "mathlib" / "Mathlib"
     keys = [(entry, problem_keys(entry)) for entry in problems]
@@ -177,4 +179,4 @@ def audit(out_path: Path) -> int:
 if __name__ == "__main__":
     args = parse_args(sys.argv[1:])
     out = resolve_out_path(args.out) if args.out is not None else default_out_path()
-    raise SystemExit(audit(out))
+    raise SystemExit(audit(out, args.benchmark))

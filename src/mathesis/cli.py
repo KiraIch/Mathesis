@@ -453,11 +453,12 @@ def run_b0_command(
     seed: int = 0,
     out: str = "runs",
     controls: bool = False,
+    benchmark_dir: str | None = None,
 ) -> int:
     if k < 1 or max_tokens < 1 or (limit is not None and limit < 1):
         print("b0 needs --k >= 1, --max-tokens >= 1 and --limit >= 1")
         return 2
-    problems = llm_baseline.load_b0_problems(None if controls else limit)
+    problems = llm_baseline.load_b0_problems(None if controls else limit, benchmark_dir)
     base_args = {
         "model": llm_baseline.MODEL_NAME,
         "k": k,
@@ -469,6 +470,7 @@ def run_b0_command(
         "lean_command": llm_baseline.lean_verify_command("<candidate.lean>"),
         "lean_cwd": str(llm_baseline.default_lean_dir()),
         "lean_timeout_s": llm_baseline.LEAN_TIMEOUT_S,
+        "benchmark": str(benchmark_dir or llm_baseline.default_lean_pilot_dir()),
         "out": str(out),
     }
     if controls:
@@ -599,6 +601,12 @@ def main(argv=None) -> int:
     b0_parser.add_argument("--seed", type=int, default=0)
     b0_parser.add_argument("--out", type=str, default="runs")
     b0_parser.add_argument(
+        "--benchmark",
+        type=str,
+        default=None,
+        help="benchmark directory holding problems.json (default: benchmark/lean_pilot)",
+    )
+    b0_parser.add_argument(
         "--controls",
         action="store_true",
         help="run only the validation controls C1/C2 (no model, no generation)",
@@ -633,7 +641,7 @@ def main(argv=None) -> int:
         )
     if args.command == "b0":
         return run_b0_command(
-            args.k, args.limit, args.max_tokens, args.seed, args.out, args.controls
+            args.k, args.limit, args.max_tokens, args.seed, args.out, args.controls, args.benchmark
         )
     return 0
 

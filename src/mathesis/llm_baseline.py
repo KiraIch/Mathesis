@@ -320,9 +320,9 @@ def verify_proof(
 # -------------------------------------------------------------------- problems
 
 
-def load_b0_problems(limit=None):
+def load_b0_problems(limit=None, benchmark_dir=None):
     """Problems in problems.json order, each with header/footer parsed from its file."""
-    base = default_lean_pilot_dir()
+    base = Path(benchmark_dir) if benchmark_dir is not None else default_lean_pilot_dir()
     entries = load_lean_pilot(base / "problems.json")
     if limit is not None:
         entries = entries[: int(limit)]
