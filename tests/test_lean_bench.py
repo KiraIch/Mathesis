@@ -234,6 +234,17 @@ class LeanBenchUnitTest(unittest.TestCase):
         for entry in calib:
             self.assertEqual(entry["bench_split"], "calibration")
 
+    def test_select_rejects_limit_below_one(self):
+        for limit in (0, -1):
+            with self.subTest(limit=limit):
+                with self.assertRaises(ValueError):
+                    select_lean_bench_problems(limit=limit)
+
+    def test_select_limit_none_returns_all(self):
+        everything = select_lean_bench_problems(limit=None)
+        self.assertEqual(len(everything), len(select_lean_bench_problems(limit=10000)))
+        self.assertGreater(len(everything), 10)
+
     def test_single_config_accepts_detector_settings(self):
         backend = MockLeanBackend()
         result, wall_ms, error = run_single_lean_config(

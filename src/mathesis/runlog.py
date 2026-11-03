@@ -13,6 +13,7 @@ from pathlib import Path
 UNKNOWN = "unknown"
 GIT_TIMEOUT_S = 10
 DIFF_HASH_CHARS = 12
+UNTRACKED_DIRS = ("src", "benchmark", "tests", "scripts")
 
 
 def default_repo_root() -> Path:
@@ -71,6 +72,30 @@ def git_diff_hash(repo_dir: Path) -> str:
     return hashlib.sha256(out.encode("utf-8", errors="replace")).hexdigest()[
         :DIFF_HASH_CHARS
     ]
+
+
+def file_sha256(path: Path) -> str:
+    """Full hex sha256 of a file's bytes, or "unknown" when the file cannot be read."""
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return UNKNOWN
+
+
+def git_untracked(repo_dir: Path) -> list[dict]:
+    """[{path, sha256}] for untracked files under UNTRACKED_DIRS; [] when git is unavailable.
+
+    git_diff_hash ignores untracked files, so they are listed here separately.
+    Paths are relative to repo_dir, sorted.
+    """
+    out = _run_git(repo_dir, ["ls-files", "--others", "--exclude-standard", "-z"])
+    if out is None:
+        return []
+    entries = []
+    for rel in sorted(item for item in out.split("\0") if item):
+        if rel.split("/", 1)[0] in UNTRACKED_DIRS:
+            entries.append({"path": rel, "sha256": file_sha256(Path(repo_dir) / rel)})
+    return entries
 
 
 def derive_seed(seed: int, problem: str, config: str) -> int:
@@ -216,6 +241,7 @@ def start_run(
         "git_commit": git_commit(repo),
         "git_dirty": git_dirty(repo),
         "git_diff_hash": git_diff_hash(repo),
+        "git_untracked": git_untracked(repo),
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "machine": platform.machine(),

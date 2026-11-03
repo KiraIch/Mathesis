@@ -19,6 +19,40 @@ def current_wall_ms(start: float) -> int:
     return int((time.monotonic() - start) * 1000.0)
 
 
+def solved_result(
+    proof: tuple[str, ...],
+    nodes: int,
+    heartbeats: int,
+    start: float,
+    impasse_count: int,
+    operator_uses: int,
+    trace: list[TraceEvent],
+) -> SearchResult:
+    cost = Cost(
+        lean_heartbeats=heartbeats,
+        search_nodes=nodes,
+        wall_ms=current_wall_ms(start),
+    )
+    return SearchResult(
+        success=True,
+        proof=proof,
+        nodes=nodes,
+        cost=cost,
+        impasse_count=impasse_count,
+        operator_uses=operator_uses,
+        trace=tuple(trace),
+    )
+
+
+def first_queued_proof(
+    queue: deque[tuple[ProofState, tuple[str, ...]]],
+) -> tuple[str, ...] | None:
+    for state, proof in queue:
+        if len(state.goals) == 0:
+            return proof
+    return None
+
+
 def fresh_intro_name(state: ProofState) -> str:
     base = "h_" + str(len(state.hypotheses) + len(state.pending))
     existing = {hyp.name for hyp in state.hypotheses}
@@ -198,12 +232,24 @@ def breadth_first_search(
     last_impasse = False
 
     while queue:
+        # Pre-fix code returned failure at a budget exit even when a queued state was
+        # already solved; old budget-edge numbers are not comparable.
         if nodes >= budget_nodes:
+            solved_proof = first_queued_proof(queue)
+            if solved_proof is not None:
+                return solved_result(
+                    solved_proof, nodes, heartbeats, start, impasse_count, operator_uses, trace
+                )
             trace.append(
                 TraceEvent(kind="budget", detail="node budget reached", node_index=nodes)
             )
             break
         if heartbeats >= budget_heartbeats:
+            solved_proof = first_queued_proof(queue)
+            if solved_proof is not None:
+                return solved_result(
+                    solved_proof, nodes, heartbeats, start, impasse_count, operator_uses, trace
+                )
             trace.append(
                 TraceEvent(
                     kind="budget", detail="heartbeat budget reached", node_index=nodes
@@ -211,6 +257,11 @@ def breadth_first_search(
             )
             break
         if current_wall_ms(start) >= budget_wall_ms:
+            solved_proof = first_queued_proof(queue)
+            if solved_proof is not None:
+                return solved_result(
+                    solved_proof, nodes, heartbeats, start, impasse_count, operator_uses, trace
+                )
             trace.append(
                 TraceEvent(kind="budget", detail="wall budget reached", node_index=nodes)
             )

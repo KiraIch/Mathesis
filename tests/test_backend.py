@@ -202,6 +202,53 @@ class BackendTest(unittest.TestCase):
             with patch("subprocess.run", return_value=done):
                 self.assertFalse(stub.check_proof("P -> P", ["intro h"]))
 
+    def _run_with(self, stub, proof, returncode=0, stdout="", stderr=""):
+        done = subprocess.CompletedProcess(
+            args=["lean"], returncode=returncode, stdout=stdout, stderr=stderr
+        )
+        with patch("shutil.which", return_value="/usr/bin/lean"):
+            with patch("subprocess.run", return_value=done) as runner:
+                return stub.check_proof("P -> P", proof), runner
+
+    def test_check_proof_rejects_sorry_warning_with_returncode_zero(self):
+        out = "Check.lean:2:8: warning: declaration uses 'sorry'"
+        ok, _ = self._run_with(SubprocessLeanBackend(), ["intro h", "exact h"], 0, out)
+        self.assertFalse(ok)
+        ok, _ = self._run_with(SubprocessLeanBackend(), ["intro h", "exact h"], 0, "", out)
+        self.assertFalse(ok)
+
+    def test_check_proof_ignores_sorry_in_comment(self):
+        proof = ["intro h -- no sorry here", "/- admit -/ exact h"]
+        ok, _ = self._run_with(SubprocessLeanBackend(), proof)
+        self.assertTrue(ok)
+
+    def test_check_proof_rejects_sorry_in_proof_without_running_lean(self):
+        ok, runner = self._run_with(SubprocessLeanBackend(), ["intro h", "sorry"])
+        self.assertFalse(ok)
+        self.assertFalse(runner.called)
+
+    def test_render_file_applies_imports_and_keeps_variable(self):
+        text = SubprocessLeanBackend(imports=("Mathlib",)).render_file("P", ["exact h"])
+        self.assertTrue(
+            text.startswith("import Mathlib\nvariable (P Q R : Prop)\ntheorem tmp_proof_check : P")
+        )
+        plain = SubprocessLeanBackend().render_file("P", ["x"])
+        self.assertNotIn("import", plain)
+        self.assertEqual(plain, "variable (P Q R : Prop)\ntheorem tmp_proof_check : P := by\n  x\n")
+
+    def test_check_proof_rejects_backtick_sorry_warning(self):
+        # Lean 4.35 prints: warning: declaration uses `sorry`
+        out = "Check.lean:2:8: warning: declaration uses `sorry`"
+        ok, _ = self._run_with(SubprocessLeanBackend(), ["intro h", "exact h"], 0, out)
+        self.assertFalse(ok)
+
+    def test_has_sorry_warning_matches_both_quote_styles(self):
+        from mathesis.backend import has_sorry_warning
+
+        self.assertTrue(has_sorry_warning("warning: declaration uses `sorry`"))
+        self.assertTrue(has_sorry_warning("warning: declaration uses 'sorry'"))
+        self.assertFalse(has_sorry_warning("declaration uses sorryAx"))
+
     def test_subprocess_check_proof_no_toolchain(self):
         stub = SubprocessLeanBackend()
         with patch("shutil.which", return_value=None):

@@ -194,6 +194,40 @@ class ApplyLogicTest(unittest.TestCase):
         self.assertIsNone(result.new_state)
         self.assertIn("sorry", str(result.error))
 
+    def test_sorry_warning_message_rejected(self):
+        backend = PantographBackend(repl_path="/nonexistent/repl")
+        response = {
+            "nextStateId": 5,
+            "goals": [{"name": "g", "target": {"pp": "P"}, "vars": []}],
+            "hasSorry": False,
+            "hasUnsafe": False,
+            "messages": [{"data": "declaration uses 'sorry'", "severity": "warning"}],
+        }
+        with patch.object(PantographBackend, "_send", return_value=response):
+            result = backend.apply(make_state(encode_state_token(4)), "exact h")
+        self.assertFalse(result.success)
+
+    def test_backtick_sorry_warning_message_rejected(self):
+        # Lean 4.35 prints the name in backticks: declaration uses `sorry`
+        backend = PantographBackend(repl_path="/nonexistent/repl")
+        response = {
+            "nextStateId": 5,
+            "goals": [{"name": "g", "target": {"pp": "P"}, "vars": []}],
+            "hasSorry": False,
+            "hasUnsafe": False,
+            "messages": [{"data": "declaration uses `sorry`", "severity": "warning"}],
+        }
+        with patch.object(PantographBackend, "_send", return_value=response):
+            result = backend.apply(make_state(encode_state_token(4)), "exact sorryAx _ true")
+        self.assertFalse(result.success)
+
+    def test_forbidden_tactic_text_rejected_before_send(self):
+        backend = PantographBackend(repl_path="/nonexistent/repl")
+        with patch.object(PantographBackend, "_send") as sender:
+            result = backend.apply(make_state(encode_state_token(4)), "sorry")
+        self.assertFalse(result.success)
+        self.assertFalse(sender.called)
+
     def test_unsafe_response_rejected(self):
         backend = PantographBackend(repl_path="/nonexistent/repl")
         response = {

@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 import tempfile
@@ -16,6 +17,16 @@ from mathesis.types import (
     split_premises,
     is_atom,
 )
+from mathesis.proof_rules import find_forbidden, find_forbidden_in_proof
+
+SORRY_WARNING = "declaration uses 'sorry'"
+# Lean 4.35 quotes the name with backticks (declaration uses `sorry`); older
+# versions used single quotes. Match both.
+SORRY_WARNING_RE = re.compile(r"declaration uses [`']sorry[`']")
+
+
+def has_sorry_warning(text: str) -> bool:
+    return SORRY_WARNING_RE.search(text) is not None
 
 
 class LeanBackend(Protocol):
@@ -393,15 +404,22 @@ def decode_lean_goals(
     return tuple(goals), tuple(hyps)
 
 
-def build_reset_command(
-    name: str, theorem: str, imports: tuple[str, ...] | list[str] = ()
-) -> str:
+def build_import_prefix(imports: tuple[str, ...] | list[str] = ()) -> str:
     prefix = ""
     for module in tuple(imports):
         cleaned = str(module).strip()
         if cleaned:
             prefix += "import " + cleaned + "\n"
-    return prefix + "theorem " + name + " : " + theorem + " := by sorry"
+    return prefix
+
+
+def build_reset_command(
+    name: str, theorem: str, imports: tuple[str, ...] | list[str] = ()
+) -> str:
+    return (
+        build_import_prefix(imports)
+        + "theorem " + name + " : " + theorem + " := by sorry"
+    )
 
 
 class SubprocessLeanBackend:
@@ -496,6 +514,14 @@ class SubprocessLeanBackend:
                 error="invalid backend token " + repr(state.backend_token),
                 heartbeats=1,
             )
+        forbidden = find_forbidden_in_proof(stripped)
+        if forbidden is not None:
+            return ApplyResult(
+                success=False,
+                new_state=None,
+                error="forbidden token in tactic: " + forbidden,
+                heartbeats=1,
+            )
         _, LeanError, _, _, _, ProofStep = require_lean_interact()
         server = self._ensure_server()
         try:
@@ -527,6 +553,13 @@ class SubprocessLeanBackend:
                 error="; ".join(errors),
                 heartbeats=1,
             )
+        if any(has_sorry_warning(str(message.data)) for message in response.messages):
+            return ApplyResult(
+                success=False,
+                new_state=None,
+                error=SORRY_WARNING,
+                heartbeats=1,
+            )
         status = response.proof_status or ""
         if status.startswith("Completed"):
             new_state = ProofState(
@@ -553,11 +586,12 @@ class SubprocessLeanBackend:
         return ApplyResult(success=True, new_state=new_state, error=None, heartbeats=1)
 
     def render_file(self, theorem: str, proof: list[str] | tuple[str, ...]) -> str:
-        lines = ["variable (P Q R : Prop)"]
-        lines.append("theorem tmp_proof_check : " + theorem + " := by")
+        # Propositional benchmark statements use free P/Q/R (e.g. "P -> Q -> P");
+        # keep the variable line so they elaborate, as before imports were added.
+        lines = ["variable (P Q R : Prop)", "theorem tmp_proof_check : " + theorem + " := by"]
         for tactic in proof:
             lines.append("  " + tactic)
-        return "\n".join(lines) + "\n"
+        return build_import_prefix(self.imports) + "\n".join(lines) + "\n"
 
     def resolve_command(self, target: str) -> list[str]:
         lake = shutil.which("lake")
@@ -574,6 +608,9 @@ class SubprocessLeanBackend:
     def check_proof(
         self, theorem: str, proof: list[str] | tuple[str, ...]
     ) -> bool:
+        proof_text = "\n".join(str(tactic) for tactic in proof)
+        if find_forbidden_in_proof(proof_text) is not None:
+            return False
         text = self.render_file(theorem, proof)
         with tempfile.TemporaryDirectory(prefix="mathesis_lean_") as tmpdir:
             target = Path(tmpdir) / "Check.lean"
@@ -593,4 +630,7 @@ class SubprocessLeanBackend:
                 )
             except subprocess.TimeoutExpired:
                 return False
-        return completed.returncode == 0
+        if completed.returncode != 0:
+            return False
+        output = (completed.stdout or "") + (completed.stderr or "")
+        return find_forbidden(output) is None

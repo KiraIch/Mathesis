@@ -15,7 +15,7 @@
 
 ## 0. 結論先行
 
-1. **現況**：框架是真實程式碼，底層 LLM 證明器已能在本機跑出真實 Lean 結果。B0 基線：舊 50 題（`lean_pilot`）pass@1 0.907、pass@8 1.000，已飽和；新 38 題（`lean_hard`）pass@1 0.819、pass@8 0.895，仍有區分力。**但 Mathesis 控制層還不是方法**：impasse 在 pilot 上全為 0，沒有 LLM 算子，hint-gap 尚未實作。
+1. **現況**：框架是真實程式碼，底層 LLM 證明器已能在本機跑出真實 Lean 結果。B0 基線（MLX 4bit 後端，run 不在本 checkout 中）：舊 50 題（`lean_pilot`）pass@1 0.907、pass@8 1.000，已飽和；新 38 題（`lean_hard`）pass@1 0.819、pass@8 0.895，仍有區分力。Linux transformers bf16 的現有 run 見 §11.1。**但 Mathesis 控制層還不是方法**：impasse 在 pilot 上全為 0，沒有 LLM 算子，hint-gap 已實作，正式數據尚未完成（見 §11）。
 2. **核心問題不變**：
 
    > **LLM 證明器在需要「輔助構造」的定理上卡住時，由「僵局（impasse）」觸發、型別化的表徵重構，能否在等算力條件下，勝過同一套算子用固定排程或隨機觸發的版本？**
@@ -24,7 +24,7 @@
    - (a) construction-gap benchmark v1（衝刺版約 80–100 題，含 insight/routine 配對）；
    - (b) hint-gap 測量；
    - (c) Mathesis v1 的 H1 判定（dev 為主，test 只跑一次）；
-   - (d) 預印本草稿與可重現的程式碼、結果。
+   - (d) 申請書草稿與可重現的程式碼、結果。
 4. **成果形式**：預印本（arXiv 或同等）＋可重現程式碼。投稿順序不變：預印本之後才考慮 NeurIPS 2027 主會（截稿約 2027 年 5 月中，以官方公告為準）與保底的 Datasets & Benchmarks。
 5. **保底**：若 H1 不成立，仍以 benchmark 與負面結果寫成預印本。不論 H1 成敗，都會產出一份成果。
 6. **時程風險很高**：9 週內要完成 benchmark、系統與 test 實驗。§6 列出砍掉的範圍與門檻，任何一關延誤就砍範圍，不延長截止日。
@@ -35,17 +35,17 @@
 
 | 面向 | 現況 | 對成果的影響 |
 |---|---|---|
-| 程式框架 | search、controller、operators、impasse 是真實程式碼。單元測試 207 passed、10 skipped（pytest，2026-11-03） | 可沿用 |
-| Lean 環境 | Lean v4.35.0、Mathlib v4.35.0 已建好；Pantograph v0.3.19 已編譯 | 就緒 |
+| 程式框架 | search、controller、operators、impasse 是真實程式碼。單元測試 415 tests，OK（skipped=10，皆為 gated：kernel、LeanInteract、lean-bench 已在本機通過；Pantograph 未安裝） | 可沿用 |
+| Lean 環境 | Lean v4.35.0、Mathlib v4.35.0 已建好；Pantograph v0.3.19 在 Mac 上已編譯，EPYC 本機尚未安裝 | 就緒 |
 | 真實 Lean 路徑 | B0 已用真實 Lean（`lake env lean`）跑過舊題組與新題組；gated 測試在 review 修正後尚未重跑 | 要重跑（§6 W1） |
 | 實驗結果 | B0：舊題組與新題組各一次完整 run，manifest、results、summary 齊全 | 已有第一組真實數字 |
-| Benchmark | 舊 `lean_pilot` 50 題：test split 已被 B0 用過，不能再當 test；新 `lean_hard` 38 題：全部標 `dev`，Lean 驗證通過，14 題為 insight | 需要擴充並重新切 split |
+| Benchmark | 舊 `lean_pilot` 50 題：test split 已被 B0 用過，不能再當 test；新 `lean_hard`：commit 版 38 題（14 題 insight）；工作樹已擴充為 89 題（40 題 insight，全部 `dev`，Lean 驗證通過，待 commit） | 需要擴充並重新切 split |
 | 算子 | AddSubgoal（子式枚舉）、TemplateHave（手寫模板，疑似過擬合）、OracleHave（只當上界）、AddSymbol（mock 下永遠失敗） | 需要 LLM 提案、型別過濾的算子 |
 | 控制器 | 四個控制器的 `choose()` 仍是 `pick_first`。impasse 分數的 budget 項已設為 0，pilot 上 impasse 全為 0 | 「impasse 驅動」目前名不符實 |
 | hint-gap | `src/` 內沒有 hint 相關實作 | 核心操作化尚未測量 |
 | Baseline | B0 完成；B1、B2、B4 未實作 | H1 尚無法檢驗 |
 | LLM | 底層 DeepSeek-Prover-V2-7B 已可載入，batch 8 約 95 tok/s | 已有 LLM，但還沒接控制層 |
-| 版本控制 | `debfb76`（初始）、`b582c58`（新題組與 `--benchmark`）。`docs/paper-plan.md` 尚未 commit | 本文件待你決定是否 commit |
+| 版本控制 | `debfb76`（初始）、`b582c58`（新題組與 `--benchmark`）、`f84a92a`（`docs/`，含本文件 v1.2）。程式與 benchmark 的其餘變更尚未 commit | 待你決定 commit 範圍 |
 | 文獻 | 設計文件中約 10 條 2026 文獻已核對（§9.1） | 新穎性核對進行中 |
 
 ---
@@ -121,7 +121,7 @@ DeepSeek-Prover-V2、Kimina、Goedel-Prover-V2、Seed-Prover 這類系統，在 
 
 | 優先序 | 目標 | 截止（約，以官方公告為準） | 條件 |
 |---|---|---|---|
-| **第一** | **RIKEN CBS 申請** | **2027-01-08** | 成果（預印本草稿＋可重現結果）完成。形式待 §10 第 1 項確認 |
+| **第一** | **RIKEN CBS 申請** | **2027-01-08** | 成果（申請書草稿＋可重現結果）完成。形式待 §10 第 1 項確認 |
 | 第二 | 預印本（arXiv 或同等） | 2027-01 之後，須你明確同意 | arXiv 需要有 endorsement 的帳號；單位寫法見 §10 第 4 項 |
 | 主投 | **NeurIPS 2027 主會** | 2027 年 5 月中 | H1 成立 |
 | 保底 | **NeurIPS 2027 Datasets & Benchmarks** | 約同期 | H1 不成立，改以 benchmark 與負面結果為主 |
@@ -174,13 +174,13 @@ ICML 2027（約 2027 年 1 月底截稿）不建議當主投。
 
 1. **候選池**：
    - miniF2F 子集（來源與授權見下方附註）；
-   - 新題組 `lean_hard`（38 題，已 Lean 驗證）；
+   - 新題組 `lean_hard`（工作樹 89 題，已 Lean 驗證；2026-11-04 的陳述審查發現 1 組代數等價重複與 2 題近似重複，已在 `audit_notes` 註記，凍結題庫時移除）；
    - 擾動題與新造題（改常數、改結構，以控制污染）；
    - 舊 `lean_pilot` 50 題：test split 已被 B0 使用，不能再進 test，只作為 calibration 或 dev 的參考。
 2. **涵蓋家族**（衝刺版 6–8 個）：不等式（AM-GM、Cauchy 型）、自然數與整除、歸納、集合與邏輯、代數恆等式、自訂遞迴定義。
 3. **計算 Gap_B**：B0 證明器在原版與提示版上各取樣 k=8。依 Gap 門檻分出 insight 題，並為每題配一題 routine 對照（陳述長度、家族、原版解題率相近）。
 4. **污染審計**：Mathlib 子字串比對（既有腳本，已修掉短陳述略過的 bug）；對 miniF2F 做重疊檢查；做 memorization probe；比較原版與擾動版的效能落差。
-   - 現況：`lean_hard` 38 題在主體比對中沒有非泛用命中；名稱片段命中 10 題，經檢視皆為雜訊。
+   - 現況：`lean_hard` 89 題在主體比對中沒有非泛用命中；名稱片段命中 10 題（皆為舊 38 題），經檢視皆為雜訊。
    - 注意：這是啟發式篩檢，不是污染的證明。我自己標的 contamination 等級比篩檢更保守。
 5. **Split**：
    - calibration 20 題（調 impasse 門檻）；
@@ -219,13 +219,13 @@ ICML 2027（約 2027 年 1 月底截稿）不建議當主投。
 
 | 週 | 日期 | 工作 | 產出 | 門檻 |
 |---|---|---|---|---|
-| **W1** | 11/03–11/09 | 本文件更新；gated 測試重跑；miniF2F 經你同意後下載、port 到 v4.35、子集 pass@8；hint-gap 試測（38 題） | 測試結果、G0 子集數字、hint-gap 初步分布 | **G0**：子集可正常執行，CoT 有效證明率可接受（若太低，改換證明器，重算時程） |
+| **W1** | 11/03–11/09 | 本文件更新；gated 測試重跑；miniF2F 經你同意後下載、port 到 v4.35、子集 pass@8；hint-gap 試測（`lean_pilot` 25 題已完成；`lean_hard` 40 目標進行中） | 測試結果、G0 子集數字、hint-gap 初步分布 | **G0**：子集可正常執行，CoT 有效證明率可接受（若太低，改換證明器，重算時程） |
 | **W2–3** | 11/10–11/23 | benchmark v1：擴到 80–100 題；hint-gap（k=8，原版與提示版）；routine 配對；LLM 標註與作者盲標 20 題 | `benchmark/v1/`、標註檔、一致性報告 | **G1**（11/23）：insight ≥40 題、routine 配對 ≥25 對（門檻為初步設定，若 Gap 分布不足就調整並記錄在 §11） |
 | **W4–5** | 11/24–12/07 | Mathesis v1（衝刺版）：LLM 提案的 AddSubgoal、AddSymbol；型別與 elaboration 過濾；impasse 特徵在 calibration 上校準；接 RandomCandidateSelector；實作 B0、B1、B2、B4；只跑 calibration 與 dev | dev 結果、校準報告 | **G2**（12/07）：dev 上 Mathesis 對 B1／B2 有可見差距。若沒有，H1 轉為負面結果路線 |
 | **W6** | 12/08–12/14 | 凍結算子庫、特徵、門檻、split、預算；撰寫並提交 OSF 預註冊（H1、H2） | 預註冊連結 | 預註冊完成，之後不改 |
 | **W7** | 12/15–12/21 | test 只跑一次（compute-matched）；bootstrap CI；mixed-effects 分析 | 主表 | **G3**（12/21）：H1 判定 |
 | **W8** | 12/22–12/31 | 一個預算的消融；個案分析；圖表；Related Work 定稿 | 圖表、消融表 | 12/31 之後不再改實驗（假期緩衝） |
-| **W9** | 2027-01-01–01-07 | 預印本草稿；reproducibility（manifest、版本、程式碼）；單位與作者確認 | 草稿與程式碼包 | 01-07 送你審閱 |
+| **W9** | 2027-01-01–01-07 | 申請書定稿（預印本為申請後的選項，見 v1.2）；reproducibility（manifest、版本、程式碼）；單位與作者確認 | 草稿與程式碼包 | 01-07 送你審閱 |
 | **截止** | **2027-01-08** | RIKEN CBS 申請截止 | — | — |
 
 **衝刺版砍掉的範圍**（任一關延誤就先砍這些）：
@@ -345,12 +345,12 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 
 ## 10. 需要你決定或提供的事
 
-1. **1/8 截止的成果形式**（最重要）：我假設是「預印本草稿 ＋ 可重現程式碼與結果」。若 RIKEN CBS 要的是研究計畫書、申請書或正式論文，請告訴我格式與字數，時程會變。
+1. **1/8 截止的成果形式**（最重要）：我假設是「申請書草稿 ＋ 可重現程式碼與結果」（v1.2 已確認交付物為申請書）。若 RIKEN CBS 的格式或字數與此不同，請告訴我，時程會變。
 2. **miniF2F 下載同意**：請同意下載 `yangky11/miniF2F-lean4` 或 `google-deepmind/minif2f` 其中之一（我建議後者，它是 Lean 4 fork，並有修正）。下載前我會先回報檔名、來源與大小。
 3. **LLM 標註器**：請決定用哪個模型與 API。這會把題目陳述送到外部服務；題目是公開 benchmark 的內容，但仍屬外部傳輸，需要你同意並提供 API 金鑰。
 4. **作者與單位**：預印本與 OSF 預註冊要用 Master Program 還是 RIKEN CBS？兩者要和 RIKEN CBS 申請的寫法一致。
 5. **預印本發布**：需要你明確同意。arXiv 也需要有 endorsement 的帳號，請確認。
-6. **版本控制**：`docs/paper-plan.md` 目前未 commit。是否要 commit 本文件？我不會未經同意提交。
+6. **版本控制**：`docs/paper-plan.md` 已在 `f84a92a` 提交；程式與 benchmark 的其餘變更待 commit。
 
 ---
 
@@ -366,13 +366,26 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 | 6 | 底層證明器 DeepSeek-Prover-V2-7B（MLX 4-bit） | ✅ 可載入；batch 8 約 95 tok/s。G0（miniF2F 子集）尚未做（W1） |
 | 7 | review 的 12 點 | ✅ 修了 8 點；其餘見下 |
 | 8 | 新 benchmark `lean_hard`（38 題，`dev`） | ✅ 全部 Lean 驗證通過；commit `b582c58` |
-| 9 | B0 舊題組（`lean_pilot` 50 題，run `runs/20261102T171018Z_b0`） | pass@1 0.907、pass@8 1.000（飽和，不再用於區分方法） |
-| 10 | B0 新題組（`lean_hard` 38 題，run `runs/20261102T184627Z_b0`） | pass@1 0.819、pass@8 0.895；4 題完全失敗，皆為真實 Lean 錯誤（Mathlib 名稱錯誤、omega、unsolved goals）。注意：部分失敗來自 Mathlib 名稱記憶，與數學難度混淆 |
-| 11 | hint-gap 測量 | ❌ 未實作（W1 試測） |
+| 9 | B0 舊題組（`lean_pilot` 50 題，run `runs/20261102T171018Z_b0`；MLX 4bit 後端，run 不在本 checkout 中） | pass@1 0.907、pass@8 1.000（飽和，不再用於區分方法） |
+| 10 | B0 新題組（`lean_hard` 38 題，run `runs/20261102T184627Z_b0`；MLX 4bit 後端，run 不在本 checkout 中） | pass@1 0.819、pass@8 0.895；4 題完全失敗，皆為真實 Lean 錯誤（Mathlib 名稱錯誤、omega、unsolved goals）。注意：部分失敗來自 Mathlib 名稱記憶，與數學難度混淆 |
+| 11 | hint-gap 測量 | ✅ 已實作（`hint-gap` 指令）；`lean_pilot` 25 題流程試測完成（只作參考）；`lean_hard` 40 目標進行中，完成前不引用（見 §11.1） |
 | 12 | Mathesis 控制層（LLM 算子、校準） | ❌ 未做（W4–5） |
 | 13 | OSF 預註冊 | ❌ 未做（W6） |
 | 14 | miniF2F 來源 | ✅ 已查證來源與版本；授權待確認；**尚未下載**（§10 第 2 項） |
 | 15 | 文獻精讀（ProofEvolve、HAGeo） | ❌ 未做（W1，D 工作流） |
+| 16 | judge v2（2026-11-04，僅 phase1 worktree，未 commit） | forbidden token 改為先剝除證明文字的註解再查（未閉合的區塊註解視為 forbidden；Lean 輸出仍逐字查）；新增 `lean_crash`（子行程非零退出且無診斷）；Lean 子行程沙箱：環境變數白名單（PATH、ELAN_HOME、LANG、LC_ALL、TMPDIR，HOME 為私有暫存目錄），`unshare -rn` 網路隔離（由 `MATHESIS_LEAN_SANDBOX` 控制，預設 auto）。**v1 判定的既有 run（含 §11.1 的四個 Linux run，以及 Mac/MLX 的兩個 run）的 forbidden 判定不得以 v2 重新解讀；若要比較，需以 v2 重新驗證候選檔。** |
+| 17 | search.py 預算邊界 L-1 漏判 | 已修（僅 phase1 worktree，未 commit）：預算耗盡時，若佇列中已有已解出的狀態，現在回傳成功。修正前的 lean-bench 與 pilot 結果，在預算邊界上的 solve rate 不可與修正後直接比較。 |
+
+### 11.1 Linux transformers bf16 的 run（本機 `runs/`）
+
+數字取自各 run 的 `summary.json`。
+
+| run | 題組 | 題數 | pass@1 | pass@8 | 狀態與用途 |
+|---|---|---|---|---|---|
+| `20261103T091021Z_b0` | `lean_hard` 舊版 | 38 | 0.826 | 0.921 | 完成。是 `20261103T122531Z_b0` 的子集重複（題名全部包含於其中），分析以 `122531Z` 為準 |
+| `20261103T122531Z_b0` | `lean_hard` | 89 | 0.737 | 0.820 | 完成。分析以此 run 為準 |
+| `20261103T101932Z_hint-gap` | `lean_pilot` | 25 | — | — | 完成，**只作流程試測**（`lean_pilot` 的 test split 依 §5.3 只作參考）。mean gap +0.010，95% CI [0.000, 0.025]；25 題中 21 題的 plain pass@1 已為 1.0（天花板） |
+| `20261103T154014Z_hint-gap` | `lean_hard` 40 個目標 | 40 | — | — | **執行中**，完成前不引用。注意：此 run 送出的 `lean_ineq_cube_sum_zero_sixth` hint 寫 `4*((x-y)(2x+y)(x+2y))^2`，代數上應為 `2*`（x=1, y=0 時兩側皆為 8）；`problems.json` 已於 2026-11-04 修正，但此 run 用的是錯誤係數。部分 hint 含策略性內容（`reference_proof` 中的代數提示），此 run 的 Gap 是否保留為正式數據，待作者決定 |
 
 **已知問題**：
 

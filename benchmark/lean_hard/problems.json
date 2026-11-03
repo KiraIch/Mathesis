@@ -920,8 +920,8 @@
       "verified": true,
       "bench_split": "dev",
       "contamination_risk": "low",
-      "mathlib_match": "none",
-      "audit_notes": "Cyclic Titu-type sum with constraint a+b+c=3, authored variant; not a Mathlib lemma."
+      "mathlib_match": "variant",
+      "audit_notes": "Cyclic Titu-type sum with constraint a+b+c=3, authored variant; not a Mathlib lemma. [2026-11-04 audit] Instance of Mathlib sq_sum_div_le_sum_sq_div (Algebra/Order/BigOperators/Ring/Finset.lean:181, Titu/Sedrakyan) with f=(a,b,c), g=(a+b,b+c,c+a). mathlib_match none -> variant."
     },
     {
       "name": "lean_ineq_two_plus_inv_product",
@@ -964,7 +964,7 @@
       "theorem": "∀ x y z : ℝ, x + y + z = 0 → 54 * (x * y * z) ^ 2 ≤ (x ^ 2 + y ^ 2 + z ^ 2) ^ 3",
       "family": "ineq",
       "insight": true,
-      "auxiliary": "With z=-x-y the difference factors as 4*((x-y)(2x+y)(x+2y))^2 (discriminant-type identity), giving one square hint.",
+      "auxiliary": "With z=-x-y the difference factors as 2*((x-y)(2x+y)(x+2y))^2 (discriminant-type identity), giving one square hint.",
       "reference_proof": [
         "intro x y z h",
         "have hz : z = -x - y := by linarith",
@@ -980,7 +980,7 @@
       "bench_split": "dev",
       "contamination_risk": "low",
       "mathlib_match": "none",
-      "audit_notes": "Discriminant-type sextic inequality for zero-sum triples, authored; not in Mathlib."
+      "audit_notes": "Discriminant-type sextic inequality for zero-sum triples, authored; not in Mathlib. [2026-11-04 audit] auxiliary coefficient corrected 4 -> 2 (D = 2*((x-y)(2x+y)(x+2y))^2); runs before this date used the wrong coefficient in the hint."
     },
     {
       "name": "lean_ineq_weighted_recip_36",
@@ -1022,8 +1022,8 @@
       "verified": true,
       "bench_split": "dev",
       "contamination_risk": "low",
-      "mathlib_match": "none",
-      "audit_notes": "Weighted Cauchy-Schwarz equality case at (1,2,3)/6; authored constants."
+      "mathlib_match": "variant",
+      "audit_notes": "Weighted Cauchy-Schwarz equality case at (1,2,3)/6; authored constants. [2026-11-04 audit] Instance of Mathlib sq_sum_div_le_sum_sq_div (Algebra/Order/BigOperators/Ring/Finset.lean:181, Titu/Sedrakyan) with f=(1,2,3), g=(a,b,c). mathlib_match none -> variant."
     },
     {
       "name": "lean_ineq_sq_sum_abc_four",
@@ -1077,8 +1077,8 @@
       "verified": true,
       "bench_split": "dev",
       "contamination_risk": "low",
-      "mathlib_match": "none",
-      "audit_notes": "Cyclic rearrangement-type inequality; no direct Mathlib statement."
+      "mathlib_match": "variant",
+      "audit_notes": "Cyclic rearrangement-type inequality; no direct Mathlib statement. [2026-11-04 audit] Instance of Mathlib sq_sum_div_le_sum_sq_div (Algebra/Order/BigOperators/Ring/Finset.lean:181, Titu/Sedrakyan) with f=(a,b,c), g=(b,c,a). mathlib_match none -> variant."
     },
     {
       "name": "lean_ineq_three_prod_over_sum",
@@ -1501,7 +1501,7 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "variant",
-      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance."
+      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance. [2026-11-04 audit] Direct consequence of Mathlib Function.cantor_surjective (Logic/Function/Basic.lean:374)."
     },
     {
       "name": "lean_logic_serial_transitive_finite_refl",
@@ -1570,7 +1570,7 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "variant",
-      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance."
+      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance. [2026-11-04 audit] Direct consequence of Mathlib WellFounded.not_rel_apply_succ (Order/WellFounded.lean:186)."
     },
     {
       "name": "lean_set_monotone_fixed_point",
@@ -1597,7 +1597,7 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "variant",
-      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance."
+      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance. [2026-11-04 audit] Follows from Mathlib OrderHom.lfp / OrderHom.map_lfp (Order/FixedPoints.lean:49,71), Knaster-Tarski."
     },
     {
       "name": "lean_algebra_boolean_ring_comm",
@@ -1703,7 +1703,7 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "none",
-      "audit_notes": "Standard sum-of-squares inequality from pairwise squares; not a Mathlib lemma statement and only needs the three square hints."
+      "audit_notes": "Standard sum-of-squares inequality from pairwise squares; not a Mathlib lemma statement and only needs the three square hints. [2026-11-04 audit] Algebraically equivalent to lean_ineq_three_pairs_mean (kept as the canonical form)."
     },
     {
       "name": "lean_ineq_quartic_shift_nonneg",
@@ -1787,7 +1787,7 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "variant",
-      "audit_notes": "Bound of pairwise product sum by the squared mean for three nonnegative reals, using the three square hints; classic exercise, no direct Mathlib statement."
+      "audit_notes": "Bound of pairwise product sum by the squared mean for three nonnegative reals, using the three square hints; classic exercise, no direct Mathlib statement. [2026-11-04 audit] Algebraically equivalent to lean_ineq_pairwise_sum_le (nonnegativity hypotheses unused); duplicate, exclude in sensitivity analysis and drop at benchmark freeze."
     },
     {
       "name": "lean_ineq_sq_shift_quarter",
@@ -1850,7 +1850,7 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "variant",
-      "audit_notes": "Square-root AM-GM against 1, proved from (sqrt x - 1)^2 >= 0 and sqrt x squared equals x; related to Mathlib's AM-GM lemmas but not a direct instance."
+      "audit_notes": "Square-root AM-GM against 1, proved from (sqrt x - 1)^2 >= 0 and sqrt x squared equals x; related to Mathlib's AM-GM lemmas but not a direct instance. [2026-11-04 audit] Special case b=1 of lean_real_geom_mean_two; near-duplicate."
     },
     {
       "name": "lean_real_cube_ge_double_sq",
@@ -1977,7 +1977,7 @@
       "novelty": "novel",
       "contamination_risk": "low",
       "mathlib_match": "none",
-      "audit_notes": "Authored shifted odd-number sum (2i+3); closed form n^2+2n is not a Mathlib statement in this shape.",
+      "audit_notes": "Authored shifted odd-number sum (2i+3); closed form n^2+2n is not a Mathlib statement in this shape. [2026-11-04 audit] Index shift of lean_nat_odd_sum (sum (2i+3) = (n+1)^2 - 1); near-duplicate.",
       "bench_split": "dev"
     },
     {

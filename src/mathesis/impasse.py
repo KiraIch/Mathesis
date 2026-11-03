@@ -23,6 +23,8 @@ class ImpasseDetector:
         # 0.0 (off); to be calibrated on the calibration split later.
         budget_weight: float = 0.0,
     ) -> None:
+        if patience < 1:
+            raise ValueError("patience must be >= 1")
         self.stall_weight = stall_weight
         self.duplicate_weight = duplicate_weight
         self.budget_weight = budget_weight

@@ -78,6 +78,10 @@ class ImpasseTest(unittest.TestCase):
         self.assertAlmostEqual(detector.score(), 0.2)
         self.assertTrue(fired)
 
+    def test_patience_below_one_raises(self):
+        with self.assertRaises(ValueError):
+            ImpasseDetector(threshold=0.1, patience=0, window=5, budget=10)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -104,6 +104,40 @@ class LeanPilotTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_lean_pilot(bad_entry)
 
+    def test_used_in_test_split_all_recorded_b0(self):
+        problems = load_lean_pilot(default_lean_pilot_path())
+        test_entries = [entry for entry in problems if entry["bench_split"] == "test"]
+        self.assertEqual(len(test_entries), 40)
+        for entry in test_entries:
+            self.assertIn("used_in", entry)
+            self.assertIn("B0", entry["used_in"], "B0 missing for " + str(entry["name"]))
+
+    def test_used_in_is_optional(self):
+        problems = load_lean_pilot(default_lean_pilot_path())
+        import copy
+
+        without = copy.deepcopy(problems)
+        for entry in without:
+            entry.pop("used_in", None)
+        self.assertTrue(validate_lean_pilot(without))
+
+    def test_used_in_rejects_bad_values(self):
+        problems = load_lean_pilot(default_lean_pilot_path())
+        import copy
+
+        bad_type = copy.deepcopy(problems)
+        bad_type[0]["used_in"] = "B0"
+        with self.assertRaises(ValueError):
+            validate_lean_pilot(bad_type)
+        bad_item = copy.deepcopy(problems)
+        bad_item[0]["used_in"] = [1]
+        with self.assertRaises(ValueError):
+            validate_lean_pilot(bad_item)
+        bad_empty = copy.deepcopy(problems)
+        bad_empty[0]["used_in"] = ["B0", "  "]
+        with self.assertRaises(ValueError):
+            validate_lean_pilot(bad_empty)
+
     @unittest.skipUnless(
         os.environ.get("MATHESIS_KERNEL_TESTS") == "1",
         "set MATHESIS_KERNEL_TESTS=1 to run kernel checks",

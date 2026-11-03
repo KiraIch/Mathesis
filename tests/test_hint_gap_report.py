@@ -221,5 +221,19 @@ class CliTest(unittest.TestCase):
         self.assertEqual(path.parent.name, "analysis")
 
 
+class TwoLevelCrossCheckTest(unittest.TestCase):
+    def test_llm_baseline_two_level_ci_matches_script(self):
+        from mathesis import llm_baseline as b0
+
+        cells = [(3, 4, 4, 4), (0, 4, 1, 4), (4, 4, 4, 4), (2, 4, 1, 4)]
+        pairs = {
+            "p%d" % i: {"plain": b0._problem_stats(pn, pc, 4), "hint": b0._problem_stats(hn, hc, 4)}
+            for i, (pc, pn, hc, hn) in enumerate(cells)
+        }
+        summary = b0.summarize_hint_gap(pairs, 4, resamples=400)
+        means = rep.two_layer_bootstrap(cells, 400, b0.HINT_GAP_CI_SEED + 1)
+        self.assertEqual(summary["ci95_two_level"], rep.percentile_interval(means))
+
+
 if __name__ == "__main__":
     unittest.main()

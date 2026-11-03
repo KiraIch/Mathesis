@@ -135,6 +135,31 @@ class ExtractProofTest(unittest.TestCase):
         proof, reason = b0.extract_proof(response, HEADER)
         self.assertEqual((proof, reason), ("\n  intro a", ""))
 
+    def test_restated_statement_with_inner_assign(self):
+        # A ':=' inside the statement (let) is not the cut; a ':=' in the proof body is not either.
+        header = (
+            "import Mathlib\nnamespace MathesisPilot\n"
+            "theorem lean_y : let x := 1; x = 1 := by"
+        )
+        response = (
+            "```lean4\nimport Mathlib\nnamespace MathesisPilot\n"
+            "theorem lean_y : let x := 1; x = 1 := by\n"
+            "  intro x\n  have h : x = 1 := by rfl\n  exact h\nend MathesisPilot\n```"
+        )
+        proof, reason = b0.extract_proof(response, header)
+        self.assertEqual(reason, "")
+        self.assertEqual(proof, "\n  intro x\n  have h : x = 1 := by rfl\n  exact h")
+
+    def test_restated_statement_with_inner_assign_still_detects_mismatch(self):
+        header = "theorem lean_y : let x := 1; x = 1 := by"
+        response = "```lean4\ntheorem lean_y : let x := 2; x = 2 := by\n  rfl\n```"
+        self.assertEqual(b0.extract_proof(response, header), (None, "statement_mismatch"))
+
+    def test_restated_statement_without_by(self):
+        header = "theorem lean_y : let x := 1; x = 1 := by"
+        response = "```lean4\ntheorem lean_y : let x := 1; x = 1 := rfl\n```"
+        self.assertEqual(b0.extract_proof(response, header), (None, "not_tactic_proof"))
+
     def test_inline_proof_gets_space(self):
         text = b0.build_candidate(HEADER, "simp", "")
         self.assertTrue(text.endswith(":= by simp\n"))
@@ -169,10 +194,76 @@ class JudgeTest(unittest.TestCase):
         self.assertIn("unknown identifier", line)
 
     def test_nonzero_exit(self):
-        self.assertEqual(b0.judge(self.PROOF, 1, "")[:2], (False, "lean_error"))
+        # No `error` line: Lean was cut short, class lean_crash (judge v2).
+        self.assertEqual(
+            b0.judge(self.PROOF, 1, ""),
+            (False, "lean_crash", "lean exited rc=1 without diagnostics"),
+        )
+        self.assertEqual(b0.judge(self.PROOF, 1, "x.lean:1:0: error: e")[:2], (False, "lean_error"))
+        # warnings are not diagnostics of failure
+        self.assertEqual(b0.judge(self.PROOF, 134, "x.lean:1:0: warning: w")[:2], (False, "lean_crash"))
+        # a forbidden token still wins over a crash
+        self.assertEqual(b0.judge("\n  sorry", 134, "")[:2], (False, "forbidden_token"))
 
     def test_timeout(self):
         self.assertEqual(b0.judge(self.PROOF, -1, "", timed_out=True)[:2], (False, "timeout"))
+
+
+class JudgeV2Test(unittest.TestCase):
+    """Judge v2: comments are stripped from the proof text before the forbidden check."""
+
+    def test_version(self):
+        self.assertEqual(b0.JUDGE_VERSION, "v2")
+
+    def test_axiom_in_comment_does_not_trigger(self):
+        for proof in ("\n  simp -- axiom", "\n  /- axiom foo : False -/\n  simp",
+                      "\n  /-- sorry -/\n  simp"):
+            self.assertEqual(b0.judge(proof, 0, "")[:2], (True, "ok"), proof)
+
+    def test_axiom_at_column_zero_triggers(self):
+        passed, cls, line = b0.judge("\n  simp\naxiom foo : False", 0, "")
+        self.assertEqual((passed, cls, line), (False, "forbidden_token", "forbidden token: axiom"))
+
+    def test_nested_comment_does_not_trigger(self):
+        self.assertTrue(b0.judge("\n  /- /- -/ axiom -/\n  simp", 0, "")[0])
+
+    def test_sorry_outside_comment_triggers(self):
+        self.assertEqual(b0.judge("\n  /- fine -/ sorry", 0, "")[:2], (False, "forbidden_token"))
+        self.assertEqual(b0.judge("\n  simp -- c\n  sorry", 0, "")[:2], (False, "forbidden_token"))
+
+    def test_sorry_after_string_with_comment_marker_triggers(self):
+        proof = '\n  trace "-- not a comment" ; sorry'
+        self.assertEqual(b0.judge(proof, 0, "")[:2], (False, "forbidden_token"))
+
+    def test_unterminated_block_comment_fails_as_forbidden(self):
+        passed, cls, line = b0.judge("\n  simp /- never closed", 0, "")
+        self.assertEqual((passed, cls), (False, "forbidden_token"))
+        self.assertIn("unterminated_comment", line)
+
+    def test_output_is_not_stripped(self):
+        out = "f.lean:3:8: warning: declaration uses 'sorry'"
+        self.assertEqual(b0.judge("\n  simp", 0, out)[:2], (False, "forbidden_token"))
+        self.assertEqual(b0.judge("\n  simp", 0, "-- sorry")[:2], (False, "forbidden_token"))
+        self.assertIsNone(b0.has_forbidden_token("-- sorry"))
+        self.assertEqual(b0.has_forbidden_token("-- sorry", is_output=True), "sorry")
+
+    def test_forbidden_source(self):
+        self.assertEqual(b0.judge_with_source("\n  sorry", 0, "")[3], "proof")
+        out = "f.lean:3:8: warning: declaration uses 'sorry'"
+        # apply?/exact? leave a sorry in the output: still forbidden_token, source "output"
+        self.assertEqual(
+            b0.judge_with_source("\n  exact?", 0, out)[1:], ("forbidden_token", "forbidden token: sorry", "output")
+        )
+        self.assertEqual(b0.judge_with_source("\n  sorry", 0, out)[3], "proof")
+        self.assertIsNone(b0.judge_with_source("\n  simp", 0, "")[3])
+        self.assertIsNone(b0.judge_with_source("\n  simp", 1, "x: error: e")[3])
+        self.assertIsNone(b0.judge_with_source("\n  sorry", -1, "", timed_out=True)[3])
+
+    def test_timeout_message_uses_given_limit(self):
+        self.assertEqual(b0.judge("\n  simp", -1, "", True, timeout_s=5)[2], "timeout after 5s")
+        self.assertEqual(
+            b0.judge("\n  simp", -1, "", True)[2], "timeout after " + str(b0.LEAN_TIMEOUT_S) + "s"
+        )
 
 
 class CommandTest(unittest.TestCase):
@@ -420,3 +511,185 @@ class CliBackendTest(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(run.call_args.kwargs["backend"], backend)
             self.assertIn(model, buf.getvalue())
+
+
+class HintGapSummaryNewFieldsTest(unittest.TestCase):
+    """P0-3: counts and two-level CI; mean_gap / ci95 stay bit-identical."""
+
+    # 20261103T101932Z_hint-gap (k=8, 25 problems): [plain_c, plain_n, hint_c, hint_n].
+    PILOT = dict(
+        [(f"full{i}", [8, 8, 8, 8]) for i in range(21)]
+        + [("lean_nat_dvd_trans", [7, 8, 7, 8]), ("lean_list_length_double", [1, 8, 1, 8]),
+           ("lean_seq_even", [0, 8, 1, 8]), ("lean_sq_nonneg", [7, 8, 8, 8])]
+    )
+
+    def _pairs(self):
+        return {
+            name: {"plain": b0._problem_stats(pn, pc, 8), "hint": b0._problem_stats(hn, hc, 8)}
+            for name, (pc, pn, hc, hn) in self.PILOT.items()
+        }
+
+    def test_pilot_values_unchanged_and_new_counts(self):
+        s = b0.summarize_hint_gap(self._pairs(), 8)
+        self.assertEqual(s["n_problems"], 25)
+        self.assertEqual(s["mean_gap"], 0.01)
+        self.assertEqual(s["ci95"], [0.0, 0.025])
+        self.assertEqual(s["n_nonzero_gap"], 2)
+        self.assertEqual(s["n_plain_ceiling"], 21)
+        self.assertEqual(s["n_plain_floor"], 1)
+        low, high = s["ci95_two_level"]
+        self.assertLessEqual(low, s["mean_gap"])
+        self.assertGreaterEqual(high, s["mean_gap"])
+
+    def test_two_level_uses_its_own_rng(self):
+        import random
+
+        pairs = self._pairs()
+        with_new = b0.summarize_hint_gap(pairs, 8, resamples=300)
+        # Re-derive ci95 by hand with the original stream only.
+        gaps = [v["hint"]["pass_at_1"] - v["plain"]["pass_at_1"] for v in pairs.values()]
+        rng = random.Random(b0.HINT_GAP_CI_SEED)
+        means = sorted(
+            sum(gaps[rng.randrange(25)] for _ in range(25)) / 25 for _ in range(300)
+        )
+        self.assertEqual(with_new["ci95"], [means[int(0.025 * 299)], means[int(0.975 * 299)]])
+        self.assertEqual(b0.summarize_hint_gap(pairs, 8, resamples=300), with_new)
+
+    def test_empty_and_bad_resamples(self):
+        s = b0.summarize_hint_gap({}, 8)
+        self.assertIsNone(s["ci95_two_level"])
+        self.assertEqual((s["n_nonzero_gap"], s["n_plain_ceiling"], s["n_plain_floor"]), (0, 0, 0))
+        for bad in (0, -3):
+            with self.assertRaises(ValueError):
+                b0.summarize_hint_gap(self._pairs(), 8, resamples=bad)
+            with self.assertRaises(ValueError):
+                b0.summarize_hint_gap({}, 8, resamples=bad)
+
+    def test_format_shows_new_fields(self):
+        text = b0.format_hint_gap_summary(b0.summarize_hint_gap(self._pairs(), 8, resamples=200))
+        self.assertIn("two-level 95% CI", text)
+        self.assertIn("nonzero gap: 2/25", text)
+        self.assertIn("plain at ceiling: 21", text)
+
+
+class EntryValidationTest(unittest.TestCase):
+    """P1-6: bad arguments fail before the model loads."""
+
+    def test_select_rejects_bad_limit_and_empty_names(self):
+        probs = [{"name": "a", "insight": True, "auxiliary": "x"}]
+        for bad in (0, -1):
+            with self.assertRaises(ValueError):
+                b0.select_hint_gap_problems(probs, limit=bad)
+        with self.assertRaises(ValueError):
+            b0.select_hint_gap_problems(probs, names=[])
+        self.assertEqual(len(b0.select_hint_gap_problems(probs, limit=1, names=["a"])), 1)
+
+    def test_run_rejects_k_and_max_tokens_before_load_model(self):
+        from unittest import mock
+
+        with mock.patch.object(b0, "load_model") as load, \
+                mock.patch.object(b0, "preflight_lean") as pre:
+            for kwargs in ({"k": 0, "max_tokens": 8}, {"k": 1, "max_tokens": 0}):
+                with self.assertRaises(ValueError):
+                    b0.run_b0(None, [], seed=0, **kwargs)
+                with self.assertRaises(ValueError):
+                    b0.run_hint_gap(None, [], seed=0, **kwargs)
+            load.assert_not_called()
+            pre.assert_not_called()
+
+    def test_summarize_b0_empty_flag_only_when_empty(self):
+        empty = b0.summarize_b0({}, 4)
+        self.assertEqual((empty["pass_at_1"], empty["pass_at_k"], empty["empty"]), (0.0, 0.0, True))
+        self.assertIn("not a measurement", b0.format_b0_summary(empty))
+        full = b0.summarize_b0({"p": b0._problem_stats(2, 1, 2)}, 2)
+        self.assertNotIn("empty", full)
+
+
+class FailureClassCountsTest(unittest.TestCase):
+    def test_counts_in_both_summaries_and_format(self):
+        counts = {"ok": 8, "lean_error": 2}
+        s = b0.summarize_b0({"p": b0._problem_stats(10, 8, 2)}, 2, counts)
+        self.assertEqual(s["failure_class_counts"], counts)
+        self.assertIn("failure classes: lean_error=2, ok=8", b0.format_b0_summary(s))
+        self.assertNotIn("WARNING", b0.format_b0_summary(s))
+        h = b0.summarize_hint_gap({}, 2, failure_class_counts=counts)
+        self.assertEqual(h["failure_class_counts"], counts)
+        self.assertEqual(b0.summarize_b0({}, 2)["failure_class_counts"], {})
+
+    def test_lean_crash_warning_above_ten_percent(self):
+        def text(crash):
+            s = b0.summarize_b0({"p": b0._problem_stats(10, 0, 2)}, 2,
+                                {"ok": 10 - crash, "lean_crash": crash})
+            return b0.format_b0_summary(s)
+
+        self.assertNotIn("WARNING", text(1))  # exactly 10%
+        self.assertIn("WARNING: lean_crash is 20.0%", text(2))
+        h = b0.summarize_hint_gap({}, 2, failure_class_counts={"lean_crash": 5})
+        self.assertIn("WARNING", b0.format_hint_gap_summary(h))
+
+
+class PreflightLeanTest(unittest.TestCase):
+    def _ver(self, failure_class, output=""):
+        return b0.Verification(failure_class == "ok", failure_class, "", 0.5, 0, output)
+
+    def _run(self, good, bad):
+        import json
+        import tempfile
+        from unittest import mock
+
+        calls = []
+
+        def fake_verify(header, proof, footer, path, lean_dir=None, timeout=None):
+            calls.append((header, proof, footer, Path(path)))
+            return good if "bad" not in header else bad
+
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(b0, "verify_proof", fake_verify):
+            out = Path(tmp) / "preflight"
+            try:
+                result = b0.preflight_lean("/lean", out)
+            finally:
+                saved = json.loads((out / "preflight.json").read_text("utf-8"))
+        return result, saved, calls
+
+    def test_ok_records_classes_and_uses_separate_dir(self):
+        result, saved, calls = self._run(self._ver("ok"), self._ver("lean_error"))
+        self.assertTrue(result["ok"])
+        self.assertEqual((result["good_failure_class"], result["bad_failure_class"]),
+                         ("ok", "lean_error"))
+        self.assertEqual(result["mode"], result["sandbox"]["mode"])
+        self.assertEqual(saved["good_failure_class"], "ok")
+        self.assertEqual(len(calls), 2)
+        for _, _, footer, path in calls:
+            self.assertEqual(footer, "")
+            self.assertEqual(path.parent.name, "preflight")
+
+    def test_wrong_verdicts_raise_environment_failure(self):
+        from unittest import mock
+
+        for good, bad, needle in (
+            (self._ver("lean_crash", "boom"), self._ver("lean_error"), "good proof: expected ok"),
+            (self._ver("ok"), self._ver("ok"), "bad proof: expected lean_error"),
+            (self._ver("lean_crash"), self._ver("lean_crash"), "lean_crash"),
+        ):
+            with self.assertRaises(b0.EnvironmentFailure) as ctx:
+                self._run(good, bad)
+            self.assertIn(needle, str(ctx.exception))
+
+    def test_requires_out_dir(self):
+        with self.assertRaises(ValueError):
+            b0.preflight_lean("/lean")
+
+
+class HitEosTest(unittest.TestCase):
+    def test_hit_eos_flags(self):
+        rows = [[1, 2, 5, 9, 0], [1, 2, 5, 6, 7], [1, 2, 99]]
+        self.assertEqual(b0._hit_eos_flags(rows, 2, [99, 9]), [True, False, True])
+        self.assertEqual(b0._hit_eos_flags([[99, 5]], 1, [99]), [False])  # prompt ignored
+        self.assertEqual(b0._hit_eos_flags([], 1, [99]), [])
+
+    def test_generated_unpacks_as_three_tuple(self):
+        g = b0._Generated((["t"], [3], 1.0))
+        texts, counts, seconds = g
+        self.assertIsNone(g.hit_eos)
+        self.assertEqual((texts, counts, seconds), (["t"], [3], 1.0))

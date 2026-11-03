@@ -6,7 +6,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from mathesis.backend import default_lean_project_dir
+from mathesis.backend import default_lean_project_dir, has_sorry_warning
+from mathesis.proof_rules import find_forbidden, find_forbidden_in_proof
 from mathesis.types import (
     ApplyResult,
     Goal,
@@ -314,6 +315,14 @@ class PantographBackend:
             return ApplyResult(
                 success=False, new_state=None, error=str(exc), heartbeats=1
             )
+        forbidden = find_forbidden_in_proof(stripped)
+        if forbidden is not None:
+            return ApplyResult(
+                success=False,
+                new_state=None,
+                error="forbidden token in tactic: " + forbidden,
+                heartbeats=1,
+            )
         parsed = parse_have_tactic(stripped)
         if parsed is not None:
             name, prop = parsed
@@ -331,7 +340,9 @@ class PantographBackend:
                 success=False, new_state=None, error=str(exc), heartbeats=1
             )
         messages = response.get("messages", [])
-        if response.get("hasSorry") is True:
+        if response.get("hasSorry") is True or has_sorry_warning(
+            summarize_messages(messages)
+        ):
             return ApplyResult(
                 success=False,
                 new_state=None,
@@ -378,6 +389,8 @@ class PantographBackend:
     def check_proof(
         self, theorem: str, proof: list[str] | tuple[str, ...], imports=("Mathlib",)
     ) -> bool:
+        if find_forbidden_in_proof("\n".join(str(t) for t in proof)) is not None:
+            return False
         lines: list[str] = []
         for module in tuple(imports):
             cleaned = str(module).strip()
@@ -412,6 +425,6 @@ class PantographBackend:
         combined = completed.stdout + completed.stderr
         if completed.returncode != 0:
             return False
-        if "sorryAx" in combined:
+        if "sorryAx" in combined or find_forbidden(combined) is not None:
             return False
         return True

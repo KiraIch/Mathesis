@@ -10,7 +10,33 @@ from mathesis.controller import (
 from mathesis.impasse import ImpasseDetector
 from mathesis.operators import AddSubgoalOperator, AddSymbolOperator
 from mathesis.search import breadth_first_search, retrieval_tactics
-from mathesis.types import Goal, Hypothesis, ProofState, make_atom, state_key
+from mathesis.types import (
+    ApplyResult,
+    Goal,
+    Hypothesis,
+    ProofState,
+    make_atom,
+    state_key,
+)
+
+
+class ScriptedBackend(MockLeanBackend):
+    """Returns scripted results for the given tactics; any other tactic fails."""
+
+    def __init__(self, script):
+        self.script = script
+
+    def apply(self, state, tactic):
+        if tactic in self.script:
+            return self.script[tactic]
+        return ApplyResult(
+            success=False, new_state=None, error="not scripted", heartbeats=1
+        )
+
+
+class _Candidate:
+    def __init__(self, description):
+        self.description = description
 
 
 class SearchTest(unittest.TestCase):
@@ -50,6 +76,138 @@ class SearchTest(unittest.TestCase):
         )
         self.assertFalse(result.success)
         self.assertLessEqual(result.nodes, 2)
+
+    def test_solution_from_last_budgeted_expansion_counts(self):
+        # The second expansion produces the solved state; it must count as
+        # success without consuming a third node.
+        backend, operators, detector = self.make_stack(budget=50)
+        result = breadth_first_search(
+            backend=backend,
+            theorem="P -> P",
+            operators=operators,
+            controller=ImpasseController(),
+            detector=detector,
+            budget_nodes=2,
+            budget_heartbeats=1000,
+            budget_wall_ms=5000,
+        )
+        self.assertTrue(result.success)
+        self.assertEqual(result.nodes, 2)
+        self.assertTrue(backend.check_proof("P -> P", list(result.proof)))
+
+    def test_solved_tactic_successor_after_unsolved_sibling(self):
+        # One expansion yields an unsolved successor ("exact a") followed by a
+        # solved one ("apply a"). The budget is used up by this expansion, so the
+        # solved sibling must still be reported as success.
+        initial = ProofState(
+            goals=(Goal(proposition=make_atom("P")),),
+            hypotheses=(Hypothesis(name="a", proposition=make_atom("P")),),
+            pending=(),
+        )
+        unsolved = ProofState(
+            goals=(Goal(proposition=make_atom("Q")),),
+            hypotheses=(Hypothesis(name="a", proposition=make_atom("P")),),
+            pending=(),
+        )
+        solved = ProofState(
+            goals=(),
+            hypotheses=(Hypothesis(name="a", proposition=make_atom("P")),),
+            pending=(),
+        )
+        backend = ScriptedBackend(
+            {
+                "exact a": ApplyResult(
+                    success=True, new_state=unsolved, error=None, heartbeats=1
+                ),
+                "apply a": ApplyResult(
+                    success=True, new_state=solved, error=None, heartbeats=1
+                ),
+            }
+        )
+        result = breadth_first_search(
+            backend=backend,
+            theorem="P",
+            operators=[],
+            controller=ImpasseController(),
+            detector=ImpasseDetector(budget=50),
+            budget_nodes=1,
+            budget_heartbeats=1000,
+            budget_wall_ms=5000,
+            initial_state=initial,
+        )
+        self.assertTrue(result.success)
+        self.assertEqual(result.nodes, 1)
+        self.assertEqual(result.proof, ("apply a",))
+
+    def test_solved_operator_successor_after_unsolved_sibling(self):
+        # The tactic "exact a" closes P and leaves R, so it is an unsolved
+        # successor queued before the operator's solved successor.
+        class SolvingOperator:
+            def pre(self, state):
+                return True
+
+            def propose(self, state, context):
+                return [_Candidate("solve")]
+
+            def apply(self, state, chosen):
+                solved = ProofState(goals=(), hypotheses=(), pending=())
+                return ApplyResult(
+                    success=True, new_state=solved, error=None, heartbeats=1
+                )
+
+        hyp = Hypothesis(name="a", proposition=make_atom("P"))
+        initial = ProofState(
+            goals=(
+                Goal(proposition=make_atom("P")),
+                Goal(proposition=make_atom("R")),
+            ),
+            hypotheses=(hyp,),
+            pending=(),
+        )
+        remaining_goal = ProofState(
+            goals=(Goal(proposition=make_atom("R")),),
+            hypotheses=(hyp,),
+            pending=(),
+        )
+        backend = ScriptedBackend(
+            {
+                "exact a": ApplyResult(
+                    success=True, new_state=remaining_goal, error=None, heartbeats=1
+                ),
+            }
+        )
+        result = breadth_first_search(
+            backend=backend,
+            theorem="P",
+            operators=[SolvingOperator()],
+            controller=AlwaysRestructureController(),
+            detector=ImpasseDetector(budget=50),
+            budget_nodes=1,
+            budget_heartbeats=1000,
+            budget_wall_ms=5000,
+            initial_state=initial,
+        )
+        self.assertTrue(result.success)
+        self.assertEqual(result.nodes, 1)
+        self.assertEqual(result.proof, ("solve",))
+        self.assertEqual(result.operator_uses, 1)
+
+    def test_initial_state_already_solved(self):
+        initial = ProofState(goals=(), hypotheses=(), pending=())
+        result = breadth_first_search(
+            backend=MockLeanBackend(),
+            theorem="P",
+            operators=[],
+            controller=ImpasseController(),
+            detector=ImpasseDetector(budget=50),
+            budget_nodes=0,
+            budget_heartbeats=1000,
+            budget_wall_ms=5000,
+            initial_state=initial,
+        )
+        self.assertTrue(result.success)
+        self.assertEqual(result.nodes, 0)
+        self.assertEqual(result.proof, ())
 
     def test_heartbeat_budget(self):
         backend, operators, detector = self.make_stack(budget=100)

@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import shutil
 import subprocess
@@ -39,7 +40,7 @@ from mathesis.lean_pilot import (
     load_lean_pilot,
 )
 from mathesis import llm_baseline
-from mathesis.runlog import start_run
+from mathesis.runlog import file_sha256, start_run
 from mathesis.search import breadth_first_search
 from mathesis.types import PilotProblem
 
@@ -267,6 +268,9 @@ def run_lean_pilot_command() -> int:
 
 
 def run_lean_replay_command(limit: int) -> int:
+    if limit < 1:
+        print("lean-replay needs --limit >= 1")
+        return 2
     path = default_lean_pilot_path()
     problems = load_lean_pilot(path)
     core = [entry for entry in problems if entry["source"] == "core"]
@@ -375,6 +379,12 @@ def run_lean_bench_command(
     out: str = "runs",
     seed: int = 0,
 ) -> int:
+    if limit < 1:
+        print("lean-bench needs --limit >= 1")
+        return 2
+    if patience < 1:
+        print("lean-bench needs --impasse-patience >= 1")
+        return 2
     raw = [item.strip() for item in str(configs_text).split(",")]
     configs = [item for item in raw if item]
     if not configs:
@@ -446,6 +456,71 @@ def run_lean_bench_command(
     return 0
 
 
+def _benchmark_base(benchmark_dir) -> Path:
+    """Same directory rule as llm_baseline.load_b0_problems."""
+    return Path(benchmark_dir) if benchmark_dir is not None else default_lean_pilot_dir()
+
+
+def _benchmark_sha256(benchmark_dir, problem_names) -> dict:
+    """sha256 of problems.json, and of each .lean file of problem_names.
+
+    lean_files maps the path of each used file (as written in problems.json)
+    to its sha256 hex digest. Problems not in problem_names are left out.
+    """
+    base = _benchmark_base(benchmark_dir)
+    entries = {str(entry["name"]): entry for entry in load_lean_pilot(base / "problems.json")}
+    lean_files = {}
+    for name in problem_names:
+        lean_file = str(entries[name]["lean_file"])
+        lean_files[lean_file] = file_sha256(base / lean_file)
+    return {"problems_json": file_sha256(base / "problems.json"), "lean_files": lean_files}
+
+
+def _auxiliary_sha256(targets) -> str:
+    """sha256 hex of the hint-gap auxiliary texts in problem-name order.
+
+    Rule: sort the targets by name, serialise [[name, auxiliary], ...] with
+    json.dumps(ensure_ascii=False, separators=(",", ":")), and hash the UTF-8
+    bytes. Pairing each text with its name keeps the digest unambiguous.
+    """
+    ordered = sorted(targets, key=lambda prob: prob["name"])
+    pairs = [[str(prob["name"]), str(prob["auxiliary"])] for prob in ordered]
+    text = json.dumps(pairs, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _common_run_args(
+    backend: str,
+    k: int,
+    limit,
+    max_tokens: int,
+    benchmark_dir: str | None,
+    out: str,
+    verify_workers: int,
+    problem_names: list[str],
+) -> dict:
+    """Manifest args shared by b0 and hint-gap; problem_names is the ordered list sent to the run."""
+    return {
+        "model": llm_baseline.default_model_name(backend),
+        "backend": backend,
+        "k": k,
+        "limit": limit,
+        "max_tokens": max_tokens,
+        "temperature": llm_baseline.DEFAULT_TEMP,
+        "prompt_template": llm_baseline.PROMPT_TEMPLATE,
+        "eval_header": llm_baseline.EVAL_HEADER,
+        "lean_command": llm_baseline.lean_verify_command("<candidate.lean>"),
+        "lean_cwd": str(llm_baseline.default_lean_dir()),
+        "lean_timeout_s": llm_baseline.LEAN_TIMEOUT_S,
+        "lean_sandbox": llm_baseline.lean_sandbox_info(),
+        "benchmark": str(benchmark_dir or llm_baseline.default_lean_pilot_dir()),
+        "benchmark_sha256": _benchmark_sha256(benchmark_dir, problem_names),
+        "problem_names": list(problem_names),
+        "verify_workers": verify_workers,
+        "out": str(out),
+    }
+
+
 def run_b0_command(
     k: int,
     limit,
@@ -464,21 +539,17 @@ def run_b0_command(
         print("b0 needs --verify-workers >= 1")
         return 2
     problems = llm_baseline.load_b0_problems(None if controls else limit, benchmark_dir)
-    base_args = {
-        "model": llm_baseline.default_model_name(backend),
-        "backend": backend,
-        "k": k,
-        "limit": limit,
-        "max_tokens": max_tokens,
-        "temperature": llm_baseline.DEFAULT_TEMP,
-        "prompt_template": llm_baseline.PROMPT_TEMPLATE,
-        "eval_header": llm_baseline.EVAL_HEADER,
-        "lean_command": llm_baseline.lean_verify_command("<candidate.lean>"),
-        "lean_cwd": str(llm_baseline.default_lean_dir()),
-        "lean_timeout_s": llm_baseline.LEAN_TIMEOUT_S,
-        "benchmark": str(benchmark_dir or llm_baseline.default_lean_pilot_dir()),
-        "out": str(out),
-    }
+    run_names = [prob["name"] for prob in problems]
+    if controls:
+        # Only the control problems are verified (a missing one fails in run_controls).
+        run_names = [name for name in llm_baseline.CONTROL_PROBLEMS if name in run_names]
+    try:
+        base_args = _common_run_args(
+            backend, k, limit, max_tokens, benchmark_dir, out, verify_workers, run_names,
+        )
+    except llm_baseline.EnvironmentFailure as exc:
+        print("b0: " + str(exc))
+        return 2
     if controls:
         base_args["control_problems"] = list(llm_baseline.CONTROL_PROBLEMS)
         run = open_run(out, "b0-controls", base_args, int(seed))
@@ -542,6 +613,9 @@ def run_hint_gap_command(
     if verify_workers < 1:
         print("hint-gap needs --verify-workers >= 1")
         return 2
+    if names is not None and any(not name for name in names):
+        print("hint-gap needs --problems as a non-empty comma-separated list of names")
+        return 2
     problems = llm_baseline.load_b0_problems(None, benchmark_dir)
     try:
         targets = llm_baseline.select_hint_gap_problems(problems, limit, names)
@@ -551,23 +625,17 @@ def run_hint_gap_command(
     if not targets:
         print("hint-gap: no insight problems with an auxiliary construction in this benchmark")
         return 2
-    base_args = {
-        "model": llm_baseline.default_model_name(backend),
-        "backend": backend,
-        "k": k,
-        "limit": limit,
-        "max_tokens": max_tokens,
-        "temperature": llm_baseline.DEFAULT_TEMP,
-        "prompt_template": llm_baseline.PROMPT_TEMPLATE,
-        "hint_prompt_template": llm_baseline.HINT_PROMPT_TEMPLATE,
-        "eval_header": llm_baseline.EVAL_HEADER,
-        "lean_command": llm_baseline.lean_verify_command("<candidate.lean>"),
-        "lean_cwd": str(llm_baseline.default_lean_dir()),
-        "lean_timeout_s": llm_baseline.LEAN_TIMEOUT_S,
-        "benchmark": str(benchmark_dir or llm_baseline.default_lean_pilot_dir()),
-        "problems": [p["name"] for p in targets],
-        "out": str(out),
-    }
+    target_names = [p["name"] for p in targets]
+    try:
+        base_args = _common_run_args(
+            backend, k, limit, max_tokens, benchmark_dir, out, verify_workers, target_names,
+        )
+    except llm_baseline.EnvironmentFailure as exc:
+        print("hint-gap: " + str(exc))
+        return 2
+    base_args["hint_prompt_template"] = llm_baseline.HINT_PROMPT_TEMPLATE
+    base_args["problems"] = target_names
+    base_args["auxiliary_sha256"] = _auxiliary_sha256(targets)
     print("hint-gap problems: " + str(len(targets)))
     print("hint-gap backend: " + backend + " model: " + llm_baseline.default_model_name(backend))
     print("hint-gap k: " + str(k) + " max_tokens: " + str(max_tokens))
@@ -763,7 +831,7 @@ def main(argv=None) -> int:
             args.backend, verify_workers=args.verify_workers,
         )
     if args.command == "hint-gap":
-        names = args.problems.split(",") if args.problems else None
+        names = args.problems.split(",") if args.problems is not None else None
         return run_hint_gap_command(
             args.k, args.limit, args.max_tokens, args.seed, args.out, args.benchmark, names,
             args.backend, verify_workers=args.verify_workers,

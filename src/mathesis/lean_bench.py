@@ -413,6 +413,9 @@ def format_lean_bench_summary(
 
 
 def select_lean_bench_problems(limit: int = 10, family=None, split=None):
+    """Pilot problems filtered by family and split, the first `limit` of them (None: all)."""
+    if limit is not None and int(limit) < 1:
+        raise ValueError("limit must be >= 1 or None, got " + str(limit))
     path = default_lean_pilot_path()
     problems = load_lean_pilot(path)
     if family is not None and str(family) != "":
@@ -423,4 +426,4 @@ def select_lean_bench_problems(limit: int = 10, family=None, split=None):
         problems = [
             entry for entry in problems if str(entry.get("bench_split", "")) == wanted_split
         ]
-    return problems[: int(limit)]
+    return problems if limit is None else problems[: int(limit)]

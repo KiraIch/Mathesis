@@ -157,6 +157,15 @@ def validate_lean_pilot(problems, base_dir=None):
                     raise ValueError(
                         "each import must be a non-empty string " + repr(name)
                     )
+        if "used_in" in entry:
+            used_in_value = entry["used_in"]
+            if not isinstance(used_in_value, list):
+                raise ValueError("used_in must be a list " + repr(name))
+            for experiment in used_in_value:
+                if not isinstance(experiment, str) or not experiment.strip():
+                    raise ValueError(
+                        "each used_in must be a non-empty string " + repr(name)
+                    )
     if insight_count < 12:
         raise ValueError("need at least 12 insight problems got " + str(insight_count))
     if routine_count < 12:

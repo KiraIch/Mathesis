@@ -1,4 +1,6 @@
+import hashlib
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +11,7 @@ from mathesis.runlog import (
     _run_git,
     derive_seed,
     git_diff_hash,
+    git_untracked,
     start_run,
 )
 
@@ -20,6 +23,7 @@ MANIFEST_KEYS = (
     "git_commit",
     "git_dirty",
     "git_diff_hash",
+    "git_untracked",
     "python_version",
     "platform",
     "machine",
@@ -179,6 +183,76 @@ class RunLogTest(unittest.TestCase):
                 derive_seed(3, record["problem"], record["config"]),
             )
             self.assertGreater(record["lean_calls"], 0)
+
+    def _make_git_repo(self, repo: Path) -> None:
+        repo.mkdir(parents=True)
+        for args in (
+            ["init", "-q"],
+            ["config", "user.email", "test@example.com"],
+            ["config", "user.name", "test"],
+            ["config", "commit.gpgsign", "false"],
+        ):
+            subprocess.run(["git"] + args, cwd=str(repo), check=True, capture_output=True)
+        (repo / "tracked.txt").write_text("one\n", encoding="utf-8")
+        subprocess.run(["git", "add", "tracked.txt"], cwd=str(repo), check=True,
+                       capture_output=True)
+        subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=str(repo), check=True,
+                       capture_output=True)
+
+    def test_git_diff_hash_unchanged_by_untracked_files(self):
+        # Same algorithm as before git_untracked existed: sha256 of `git diff HEAD`.
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            self._make_git_repo(repo)
+            (repo / "tracked.txt").write_text("two\n", encoding="utf-8")
+            diff = subprocess.run(
+                ["git", "diff", "HEAD"], cwd=str(repo), capture_output=True,
+                text=True, encoding="utf-8", errors="replace", check=True,
+            ).stdout.strip()
+            expected = hashlib.sha256(diff.encode("utf-8", errors="replace")).hexdigest()[:12]
+            self.assertEqual(git_diff_hash(repo), expected)
+            (repo / "src").mkdir()
+            (repo / "src" / "new.py").write_text("x = 1\n", encoding="utf-8")
+            self.assertEqual(git_diff_hash(repo), expected)
+            run = start_run(Path(tmp) / "runs", "pilot", {}, 0, repo_dir=repo)
+            manifest = json.loads((run.path / "manifest.json").read_text("utf-8"))
+            self.assertEqual(manifest["git_diff_hash"], expected)
+
+    def test_manifest_git_untracked_lists_tracked_dirs_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            self._make_git_repo(repo)
+            (repo / "src").mkdir()
+            (repo / "src" / "new.py").write_text("x = 1\n", encoding="utf-8")
+            (repo / "tests").mkdir()
+            (repo / "tests" / "test_new.py").write_text("y = 2\n", encoding="utf-8")
+            (repo / "notes").mkdir()
+            (repo / "notes" / "skip.txt").write_text("not listed\n", encoding="utf-8")
+            run = start_run(Path(tmp) / "runs", "pilot", {}, 0, repo_dir=repo)
+            manifest = json.loads((run.path / "manifest.json").read_text("utf-8"))
+            expected = [
+                {
+                    "path": "src/new.py",
+                    "sha256": hashlib.sha256(b"x = 1\n").hexdigest(),
+                },
+                {
+                    "path": "tests/test_new.py",
+                    "sha256": hashlib.sha256(b"y = 2\n").hexdigest(),
+                },
+            ]
+            self.assertEqual(manifest["git_untracked"], expected)
+            self.assertEqual(git_untracked(repo), expected)
+
+    def test_git_untracked_empty_outside_git(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "norepo"
+            repo.mkdir()
+            (repo / "src").mkdir()
+            (repo / "src" / "x.py").write_text("z\n", encoding="utf-8")
+            self.assertEqual(git_untracked(repo), [])
+            run = start_run(Path(tmp) / "runs", "pilot", {}, 0, repo_dir=repo)
+            manifest = json.loads((run.path / "manifest.json").read_text("utf-8"))
+            self.assertEqual(manifest["git_untracked"], [])
 
 
 if __name__ == "__main__":
