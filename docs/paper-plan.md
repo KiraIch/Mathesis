@@ -219,7 +219,7 @@ ICML 2027（約 2027 年 1 月底截稿）不建議當主投。
 
 | 週 | 日期 | 工作 | 產出 | 門檻 |
 |---|---|---|---|---|
-| **W1** | 11/03–11/09 | 本文件更新；gated 測試重跑；miniF2F 經你同意後下載、port 到 v4.35、子集 pass@8；hint-gap 試測（`lean_pilot` 25 題已完成；`lean_hard` 40 目標進行中） | 測試結果、G0 子集數字、hint-gap 初步分布 | **G0**：子集可正常執行，CoT 有效證明率可接受（若太低，改換證明器，重算時程） |
+| **W1** | 11/03–11/09 | 本文件更新；gated 測試重跑；miniF2F 經你同意後下載、port 到 v4.35、子集 pass@8；hint-gap 試測（`lean_pilot` 25 題已完成；`lean_hard` 40 目標已完成，mean gap +0.075，見 §11.1） | 測試結果、G0 子集數字、hint-gap 初步分布 | **G0**：子集可正常執行，CoT 有效證明率可接受（若太低，改換證明器，重算時程） |
 | **W2–3** | 11/10–11/23 | benchmark v1：擴到 80–100 題；hint-gap（k=8，原版與提示版）；routine 配對；LLM 標註與作者盲標 20 題 | `benchmark/v1/`、標註檔、一致性報告 | **G1**（11/23）：insight ≥40 題、routine 配對 ≥25 對（門檻為初步設定，若 Gap 分布不足就調整並記錄在 §11） |
 | **W4–5** | 11/24–12/07 | Mathesis v1（衝刺版）：LLM 提案的 AddSubgoal、AddSymbol；型別與 elaboration 過濾；impasse 特徵在 calibration 上校準；接 RandomCandidateSelector；實作 B0、B1、B2、B4；只跑 calibration 與 dev | dev 結果、校準報告 | **G2**（12/07）：dev 上 Mathesis 對 B1／B2 有可見差距。若沒有，H1 轉為負面結果路線 |
 | **W6** | 12/08–12/14 | 凍結算子庫、特徵、門檻、split、預算；撰寫並提交 OSF 預註冊（H1、H2） | 預註冊連結 | 預註冊完成，之後不改 |
@@ -368,13 +368,13 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 | 8 | 新 benchmark `lean_hard`（38 題，`dev`） | ✅ 全部 Lean 驗證通過；commit `b582c58` |
 | 9 | B0 舊題組（`lean_pilot` 50 題，run `runs/20261102T171018Z_b0`；MLX 4bit 後端，run 不在本 checkout 中） | pass@1 0.907、pass@8 1.000（飽和，不再用於區分方法） |
 | 10 | B0 新題組（`lean_hard` 38 題，run `runs/20261102T184627Z_b0`；MLX 4bit 後端，run 不在本 checkout 中） | pass@1 0.819、pass@8 0.895；4 題完全失敗，皆為真實 Lean 錯誤（Mathlib 名稱錯誤、omega、unsolved goals）。注意：部分失敗來自 Mathlib 名稱記憶，與數學難度混淆 |
-| 11 | hint-gap 測量 | ✅ 已實作（`hint-gap` 指令）；`lean_pilot` 25 題流程試測完成（只作參考）；`lean_hard` 40 目標進行中，完成前不引用（見 §11.1） |
+| 11 | hint-gap 測量 | ✅ 已實作（`hint-gap` 指令）；`lean_pilot` 25 題流程試測完成（只作參考）；`lean_hard` 40 目標已完成，暫列探索性（見 §11.1） |
 | 12 | Mathesis 控制層（LLM 算子、校準） | ❌ 未做（W4–5） |
 | 13 | OSF 預註冊 | ❌ 未做（W6） |
 | 14 | miniF2F 來源 | ✅ 已查證來源與版本；授權待確認；**尚未下載**（§10 第 2 項） |
 | 15 | 文獻精讀（ProofEvolve、HAGeo） | ❌ 未做（W1，D 工作流） |
-| 16 | judge v2（2026-11-04，僅 phase1 worktree，未 commit） | forbidden token 改為先剝除證明文字的註解再查（未閉合的區塊註解視為 forbidden；Lean 輸出仍逐字查）；新增 `lean_crash`（子行程非零退出且無診斷）；Lean 子行程沙箱：環境變數白名單（PATH、ELAN_HOME、LANG、LC_ALL、TMPDIR，HOME 為私有暫存目錄），`unshare -rn` 網路隔離（由 `MATHESIS_LEAN_SANDBOX` 控制，預設 auto）。**v1 判定的既有 run（含 §11.1 的四個 Linux run，以及 Mac/MLX 的兩個 run）的 forbidden 判定不得以 v2 重新解讀；若要比較，需以 v2 重新驗證候選檔。** |
-| 17 | search.py 預算邊界 L-1 漏判 | 已修（僅 phase1 worktree，未 commit）：預算耗盡時，若佇列中已有已解出的狀態，現在回傳成功。修正前的 lean-bench 與 pilot 結果，在預算邊界上的 solve rate 不可與修正後直接比較。 |
+| 16 | judge v2（2026-11-04，commit `246539e`，分支 `epyc-phase1`） | forbidden token 改為先剝除證明文字的註解再查（未閉合的區塊註解視為 forbidden；Lean 輸出仍逐字查）；新增 `lean_crash`（子行程非零退出且無診斷）；Lean 子行程沙箱：環境變數白名單（PATH、ELAN_HOME、LANG、LC_ALL、TMPDIR，HOME 為私有暫存目錄），`unshare -rn` 網路隔離（由 `MATHESIS_LEAN_SANDBOX` 控制，預設 auto）。**v1 判定的既有 run（含 §11.1 的四個 Linux run，以及 Mac/MLX 的兩個 run）的 forbidden 判定不得以 v2 重新解讀；若要比較，需以 v2 重新驗證候選檔。** |
+| 17 | search.py 預算邊界 L-1 漏判 | 已修（commit `246539e`）：預算耗盡時，若佇列中已有已解出的狀態，現在回傳成功。修正前的 lean-bench 與 pilot 結果，在預算邊界上的 solve rate 不可與修正後直接比較。 |
 
 ### 11.1 Linux transformers bf16 的 run（本機 `runs/`）
 
@@ -385,7 +385,7 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 | `20261103T091021Z_b0` | `lean_hard` 舊版 | 38 | 0.826 | 0.921 | 完成。是 `20261103T122531Z_b0` 的子集重複（題名全部包含於其中），分析以 `122531Z` 為準 |
 | `20261103T122531Z_b0` | `lean_hard` | 89 | 0.737 | 0.820 | 完成。分析以此 run 為準 |
 | `20261103T101932Z_hint-gap` | `lean_pilot` | 25 | — | — | 完成，**只作流程試測**（`lean_pilot` 的 test split 依 §5.3 只作參考）。mean gap +0.010，95% CI [0.000, 0.025]；25 題中 21 題的 plain pass@1 已為 1.0（天花板） |
-| `20261103T154014Z_hint-gap` | `lean_hard` 40 個目標 | 40 | — | — | **執行中**，完成前不引用。注意：此 run 送出的 `lean_ineq_cube_sum_zero_sixth` hint 寫 `4*((x-y)(2x+y)(x+2y))^2`，代數上應為 `2*`（x=1, y=0 時兩側皆為 8）；`problems.json` 已於 2026-11-04 修正，但此 run 用的是錯誤係數。部分 hint 含策略性內容（`reference_proof` 中的代數提示），此 run 的 Gap 是否保留為正式數據，待作者決定 |
+| `20261103T154014Z_hint-gap` | `lean_hard` 40 個目標 | 40 | — | — | 完成（640 列，judge v1），**暫列探索性數據**，是否作為正式數據待作者決定。mean gap（hint − plain 的 pass@1）+0.075，兩層 bootstrap 95% CI [0.016, 0.147]；40 題中 29 題兩條件都在天花板或地板，非零 gap 10 題，超過雜訊 p90（0.125，來自與 `122531Z` plain 的差異）只有 5 題（`real_lucas_five` +0.875、`real_geom_mean_two` +0.750、`logic_drinker_implication` +0.500、`custom_fib2_bound` +0.250、`nat_sum_even` +0.250）。敏感度：排除 `real_exp_linear` 與係數錯誤題後 +0.076 [0.013, 0.155]；再排除所有 2026-11-04 audit 標記題後 +0.090 [0.016, 0.180]（n=32）；策略文字型 hint（24 題）+0.073，公式型（16 題）+0.078，兩者無明顯差別。分析檔 `runs/analysis/hint_gap_report_20261103T154014Z_hint-gap.json`。注意：此 run 送出的 `lean_ineq_cube_sum_zero_sixth` hint 寫 `4*((x-y)(2x+y)(x+2y))^2`，代數上應為 `2*`（x=1, y=0 時兩側皆為 8）；`problems.json` 已於 2026-11-04 修正，但此 run 用的是錯誤係數。部分 hint 含策略性內容（`reference_proof` 中的代數提示），此 run 的 Gap 是否保留為正式數據，待作者決定 |
 
 **已知問題**：
 
