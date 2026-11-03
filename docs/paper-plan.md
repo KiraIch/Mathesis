@@ -42,10 +42,10 @@
 | Benchmark | 舊 `lean_pilot` 50 題：test split 已被 B0 用過，不能再當 test；新 `lean_hard`：commit 版 38 題（14 題 insight）；工作樹已擴充為 89 題（40 題 insight，全部 `dev`，Lean 驗證通過，待 commit） | 需要擴充並重新切 split |
 | 算子 | AddSubgoal（子式枚舉）、TemplateHave（手寫模板，疑似過擬合）、OracleHave（只當上界）、AddSymbol（mock 下永遠失敗） | 需要 LLM 提案、型別過濾的算子 |
 | 控制器 | 四個控制器的 `choose()` 仍是 `pick_first`。impasse 分數的 budget 項已設為 0，pilot 上 impasse 全為 0 | 「impasse 驅動」目前名不符實 |
-| hint-gap | `src/` 內沒有 hint 相關實作 | 核心操作化尚未測量 |
+| hint-gap | 已實作（`hint-gap` 指令）；`lean_hard` 40 目標已跑完，暫列探索性（§11.1） | 正式測量（預先登記的題目與切分）尚未做 |
 | Baseline | B0 完成；B1、B2、B4 未實作 | H1 尚無法檢驗 |
 | LLM | 底層 DeepSeek-Prover-V2-7B 已可載入，batch 8 約 95 tok/s | 已有 LLM，但還沒接控制層 |
-| 版本控制 | `debfb76`（初始）、`b582c58`（新題組與 `--benchmark`）、`f84a92a`（`docs/`，含本文件 v1.2）。程式與 benchmark 的其餘變更尚未 commit | 待你決定 commit 範圍 |
+| 版本控制 | `debfb76`（初始）、`b582c58`（新題組與 `--benchmark`）、`f84a92a`（`docs/`，含本文件 v1.2）；本機分支 `epyc-phase1`：`88171b2`（EPYC run 所用的程式與題庫）、`246539e`（Phase 1 修正）及其後的文件更新。未 push | 是否 push、是否併入 main 待你決定 |
 | 文獻 | 設計文件中約 10 條 2026 文獻已核對（§9.1） | 新穎性核對進行中 |
 
 ---
@@ -385,7 +385,7 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 | `20261103T091021Z_b0` | `lean_hard` 舊版 | 38 | 0.826 | 0.921 | 完成。是 `20261103T122531Z_b0` 的子集重複（題名全部包含於其中），分析以 `122531Z` 為準 |
 | `20261103T122531Z_b0` | `lean_hard` | 89 | 0.737 | 0.820 | 完成。分析以此 run 為準 |
 | `20261103T101932Z_hint-gap` | `lean_pilot` | 25 | — | — | 完成，**只作流程試測**（`lean_pilot` 的 test split 依 §5.3 只作參考）。mean gap +0.010，95% CI [0.000, 0.025]；25 題中 21 題的 plain pass@1 已為 1.0（天花板） |
-| `20261103T154014Z_hint-gap` | `lean_hard` 40 個目標 | 40 | — | — | 完成（640 列，judge v1），**暫列探索性數據**，是否作為正式數據待作者決定。mean gap（hint − plain 的 pass@1）+0.075，兩層 bootstrap 95% CI [0.016, 0.147]；40 題中 29 題兩條件都在天花板或地板，非零 gap 10 題，超過雜訊 p90（0.125，來自與 `122531Z` plain 的差異）只有 5 題（`real_lucas_five` +0.875、`real_geom_mean_two` +0.750、`logic_drinker_implication` +0.500、`custom_fib2_bound` +0.250、`nat_sum_even` +0.250）。敏感度：排除 `real_exp_linear` 與係數錯誤題後 +0.076 [0.013, 0.155]；再排除所有 2026-11-04 audit 標記題後 +0.090 [0.016, 0.180]（n=32）；策略文字型 hint（24 題）+0.073，公式型（16 題）+0.078，兩者無明顯差別。分析檔 `runs/analysis/hint_gap_report_20261103T154014Z_hint-gap.json`。注意：此 run 送出的 `lean_ineq_cube_sum_zero_sixth` hint 寫 `4*((x-y)(2x+y)(x+2y))^2`，代數上應為 `2*`（x=1, y=0 時兩側皆為 8）；`problems.json` 已於 2026-11-04 修正，但此 run 用的是錯誤係數。部分 hint 含策略性內容（`reference_proof` 中的代數提示），此 run 的 Gap 是否保留為正式數據，待作者決定 |
+| `20261103T154014Z_hint-gap` | `lean_hard` 40 個目標 | 40 | — | — | 完成（640 列，judge v1），**暫列探索性數據**，是否作為正式數據待作者決定。mean gap（hint − plain 的 pass@1）+0.075，兩層 bootstrap 95% CI [0.016, 0.147]；40 題中 29 題兩條件都在天花板或地板，非零 gap 10 題，超過雜訊 p90（0.125，來自與 `122531Z` plain 的差異）只有 5 題（`real_lucas_five` +0.875、`real_geom_mean_two` +0.750、`logic_drinker_implication` +0.500、`custom_fib2_bound` +0.250、`nat_sum_even` +0.250）。敏感度：排除 `real_exp_linear` 與係數錯誤題後 +0.076 [0.013, 0.155]；再排除所有 2026-11-04 audit 標記題後 +0.090 [0.016, 0.180]（n=32）；2026-11-04 審查判定 auxiliary 寫成策略文字（而非 have 陳述）的 9 題，兩條件全在天花板（3 題）或地板（6 題），gap 皆為 0，無法判斷策略文字 hint 的效果；其餘 31 題 +0.097 [0.020, 0.190]。各子集的非零 gap 只有 0–10 題，樣本不足以比較子集間差異。分析檔 `runs/analysis/hint_gap_report_20261103T154014Z_hint-gap.json`。注意：此 run 送出的 `lean_ineq_cube_sum_zero_sixth` hint 寫 `4*((x-y)(2x+y)(x+2y))^2`，代數上應為 `2*`（x=1, y=0 時兩側皆為 8）；`problems.json` 已於 2026-11-04 修正，但此 run 用的是錯誤係數。部分 hint 含策略性內容（`reference_proof` 中的代數提示），此 run 的 Gap 是否保留為正式數據，待作者決定 |
 
 **已知問題**：
 
