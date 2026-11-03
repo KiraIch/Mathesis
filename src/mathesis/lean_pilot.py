@@ -62,8 +62,9 @@ def validate_lean_pilot(problems, base_dir=None):
     if not isinstance(problems, list):
         raise ValueError("lean pilot problems must be a list")
     count = len(problems)
-    if count < 38 or count > 64:
-        raise ValueError("lean pilot needs 38 to 64 problems got " + str(count))
+    # 38 is the original lean_hard size; 100 is the upper end of the sprint benchmark (paper-plan §3, 80-100).
+    if count < 38 or count > 100:
+        raise ValueError("lean pilot needs 38 to 100 problems got " + str(count))
     seen_names = set()
     seen_theorems = set()
     insight_count = 0

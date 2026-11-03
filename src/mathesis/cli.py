@@ -454,13 +454,19 @@ def run_b0_command(
     out: str = "runs",
     controls: bool = False,
     benchmark_dir: str | None = None,
+    backend: str = llm_baseline.DEFAULT_BACKEND,
+    verify_workers: int = llm_baseline.DEFAULT_VERIFY_WORKERS,
 ) -> int:
     if k < 1 or max_tokens < 1 or (limit is not None and limit < 1):
         print("b0 needs --k >= 1, --max-tokens >= 1 and --limit >= 1")
         return 2
+    if verify_workers < 1:
+        print("b0 needs --verify-workers >= 1")
+        return 2
     problems = llm_baseline.load_b0_problems(None if controls else limit, benchmark_dir)
     base_args = {
-        "model": llm_baseline.MODEL_NAME,
+        "model": llm_baseline.default_model_name(backend),
+        "backend": backend,
         "k": k,
         "limit": limit,
         "max_tokens": max_tokens,
@@ -499,7 +505,7 @@ def run_b0_command(
         print("run dir: " + str(run.path))
         return 0 if report["ok"] else 1
     print("b0 problems: " + str(len(problems)))
-    print("b0 model: " + llm_baseline.MODEL_NAME)
+    print("b0 backend: " + backend + " model: " + llm_baseline.default_model_name(backend))
     print("b0 k: " + str(k) + " max_tokens: " + str(max_tokens))
     run = open_run(out, "b0", base_args, int(seed))
     if run is None:
@@ -507,13 +513,79 @@ def run_b0_command(
     try:
         with run.guard() as outcome:
             outcome.summary = llm_baseline.run_b0(
-                run, problems, k=k, max_tokens=max_tokens, seed=int(seed)
+                run, problems, k=k, max_tokens=max_tokens, seed=int(seed), backend=backend,
+                verify_workers=verify_workers,
             )
     except Exception as exc:
         print("b0 failed: " + str(exc))
         print("run dir: " + str(run.path))
         return 1
     print(llm_baseline.format_b0_summary(outcome.summary))
+    print("run dir: " + str(run.path))
+    return 0
+
+
+def run_hint_gap_command(
+    k: int,
+    limit,
+    max_tokens: int,
+    seed: int = 0,
+    out: str = "runs",
+    benchmark_dir: str | None = None,
+    names: list[str] | None = None,
+    backend: str = llm_baseline.DEFAULT_BACKEND,
+    verify_workers: int = llm_baseline.DEFAULT_VERIFY_WORKERS,
+) -> int:
+    if k < 1 or max_tokens < 1 or (limit is not None and limit < 1):
+        print("hint-gap needs --k >= 1, --max-tokens >= 1 and --limit >= 1")
+        return 2
+    if verify_workers < 1:
+        print("hint-gap needs --verify-workers >= 1")
+        return 2
+    problems = llm_baseline.load_b0_problems(None, benchmark_dir)
+    try:
+        targets = llm_baseline.select_hint_gap_problems(problems, limit, names)
+    except ValueError as exc:
+        print("hint-gap: " + str(exc))
+        return 2
+    if not targets:
+        print("hint-gap: no insight problems with an auxiliary construction in this benchmark")
+        return 2
+    base_args = {
+        "model": llm_baseline.default_model_name(backend),
+        "backend": backend,
+        "k": k,
+        "limit": limit,
+        "max_tokens": max_tokens,
+        "temperature": llm_baseline.DEFAULT_TEMP,
+        "prompt_template": llm_baseline.PROMPT_TEMPLATE,
+        "hint_prompt_template": llm_baseline.HINT_PROMPT_TEMPLATE,
+        "eval_header": llm_baseline.EVAL_HEADER,
+        "lean_command": llm_baseline.lean_verify_command("<candidate.lean>"),
+        "lean_cwd": str(llm_baseline.default_lean_dir()),
+        "lean_timeout_s": llm_baseline.LEAN_TIMEOUT_S,
+        "benchmark": str(benchmark_dir or llm_baseline.default_lean_pilot_dir()),
+        "problems": [p["name"] for p in targets],
+        "out": str(out),
+    }
+    print("hint-gap problems: " + str(len(targets)))
+    print("hint-gap backend: " + backend + " model: " + llm_baseline.default_model_name(backend))
+    print("hint-gap k: " + str(k) + " max_tokens: " + str(max_tokens))
+    run = open_run(out, "hint-gap", base_args, int(seed))
+    if run is None:
+        return 1
+    try:
+        with run.guard() as outcome:
+            outcome.summary = llm_baseline.run_hint_gap(
+                run, problems, k=k, max_tokens=max_tokens, seed=int(seed),
+                limit=limit, names=names, backend=backend,
+                verify_workers=verify_workers,
+            )
+    except Exception as exc:
+        print("hint-gap failed: " + str(exc))
+        print("run dir: " + str(run.path))
+        return 1
+    print(llm_baseline.format_hint_gap_summary(outcome.summary))
     print("run dir: " + str(run.path))
     return 0
 
@@ -611,6 +683,52 @@ def main(argv=None) -> int:
         action="store_true",
         help="run only the validation controls C1/C2 (no model, no generation)",
     )
+    b0_parser.add_argument(
+        "--backend",
+        type=str,
+        default=llm_baseline.DEFAULT_BACKEND,
+        choices=list(llm_baseline.BACKENDS),
+        help="generation backend (default: transformers; mlx is Apple-silicon only)",
+    )
+    b0_parser.add_argument(
+        "--verify-workers",
+        type=int,
+        default=llm_baseline.DEFAULT_VERIFY_WORKERS,
+        help="concurrent Lean checks (default: %d)" % llm_baseline.DEFAULT_VERIFY_WORKERS,
+    )
+    hint_parser = sub.add_parser("hint-gap")
+    hint_parser.add_argument("--k", type=int, default=llm_baseline.DEFAULT_K)
+    hint_parser.add_argument("--limit", type=int, default=None)
+    hint_parser.add_argument(
+        "--max-tokens", type=int, default=llm_baseline.DEFAULT_MAX_TOKENS
+    )
+    hint_parser.add_argument("--seed", type=int, default=0)
+    hint_parser.add_argument("--out", type=str, default="runs")
+    hint_parser.add_argument(
+        "--benchmark",
+        type=str,
+        default=None,
+        help="benchmark directory holding problems.json (default: benchmark/lean_pilot)",
+    )
+    hint_parser.add_argument(
+        "--problems",
+        type=str,
+        default=None,
+        help="comma-separated problem names to restrict the hint-gap targets to",
+    )
+    hint_parser.add_argument(
+        "--backend",
+        type=str,
+        default=llm_baseline.DEFAULT_BACKEND,
+        choices=list(llm_baseline.BACKENDS),
+        help="generation backend (default: transformers; mlx is Apple-silicon only)",
+    )
+    hint_parser.add_argument(
+        "--verify-workers",
+        type=int,
+        default=llm_baseline.DEFAULT_VERIFY_WORKERS,
+        help="concurrent Lean checks (default: %d)" % llm_baseline.DEFAULT_VERIFY_WORKERS,
+    )
     args = parser.parse_args(argv)
     if args.command == "smoke":
         return run_smoke()
@@ -641,7 +759,14 @@ def main(argv=None) -> int:
         )
     if args.command == "b0":
         return run_b0_command(
-            args.k, args.limit, args.max_tokens, args.seed, args.out, args.controls, args.benchmark
+            args.k, args.limit, args.max_tokens, args.seed, args.out, args.controls, args.benchmark,
+            args.backend, verify_workers=args.verify_workers,
+        )
+    if args.command == "hint-gap":
+        names = args.problems.split(",") if args.problems else None
+        return run_hint_gap_command(
+            args.k, args.limit, args.max_tokens, args.seed, args.out, args.benchmark, names,
+            args.backend, verify_workers=args.verify_workers,
         )
     return 0
 

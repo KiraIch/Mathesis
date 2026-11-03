@@ -15,7 +15,7 @@ class LeanPilotTest(unittest.TestCase):
         path = default_lean_pilot_path()
         problems = load_lean_pilot(path)
         self.assertGreaterEqual(len(problems), 38)
-        self.assertLessEqual(len(problems), 64)
+        self.assertLessEqual(len(problems), 100)
 
     def test_unique_names_and_theorems(self):
         problems = load_lean_pilot(default_lean_pilot_path())

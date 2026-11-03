@@ -210,6 +210,69 @@ class SummaryTest(unittest.TestCase):
                 self.fail("module-level mlx import: " + line)
 
 
+class HintGapTest(unittest.TestCase):
+    def test_hinted_prompt_names_hint_and_keeps_header(self):
+        prompt = b0.build_hinted_prompt(HEADER, "the (a-b)^2 cross terms")
+        self.assertIn("the (a-b)^2 cross terms", prompt)
+        self.assertIn("theorem lean_x", prompt)
+        self.assertNotIn("auxiliary step", b0.build_prompt(HEADER))
+
+    def test_plain_prompt_unchanged(self):
+        expected = b0.PROMPT_TEMPLATE.format(header=b0.with_eval_header(HEADER))
+        self.assertEqual(b0.build_prompt(HEADER), expected)
+
+    def test_targets_are_insight_problems_with_auxiliary(self):
+        problems = [
+            {"name": "i1", "insight": True, "auxiliary": "x"},
+            {"name": "i2", "insight": True, "auxiliary": ""},
+            {"name": "r1", "insight": False, "auxiliary": "x"},
+            {"name": "i3", "insight": True, "auxiliary": "y"},
+        ]
+        names = [p["name"] for p in b0.select_hint_gap_problems(problems)]
+        self.assertEqual(names, ["i1", "i3"])
+        limited = b0.select_hint_gap_problems(problems, limit=1)
+        self.assertEqual([p["name"] for p in limited], ["i1"])
+
+    def test_names_restrict_targets_and_reject_non_targets(self):
+        problems = [
+            {"name": "i1", "insight": True, "auxiliary": "x"},
+            {"name": "i2", "insight": True, "auxiliary": "y"},
+            {"name": "r1", "insight": False, "auxiliary": ""},
+        ]
+        picked = b0.select_hint_gap_problems(problems, names=["i2"])
+        self.assertEqual([p["name"] for p in picked], ["i2"])
+        with self.assertRaises(ValueError):
+            b0.select_hint_gap_problems(problems, names=["r1"])
+
+    def test_gap_is_difference_of_pass_at_1(self):
+        pairs = {
+            "a": {"plain": b0._problem_stats(8, 2, 8), "hint": b0._problem_stats(8, 6, 8)},
+            "b": {"plain": b0._problem_stats(8, 4, 8), "hint": b0._problem_stats(8, 4, 8)},
+        }
+        s = b0.summarize_hint_gap(pairs, 8, resamples=500)
+        self.assertAlmostEqual(s["per_problem"]["a"]["gap"], 0.5)
+        self.assertAlmostEqual(s["per_problem"]["b"]["gap"], 0.0)
+        self.assertAlmostEqual(s["mean_gap"], 0.25)
+        low, high = s["ci95"]
+        self.assertLessEqual(low, s["mean_gap"])
+        self.assertGreaterEqual(high, s["mean_gap"])
+
+    def test_bootstrap_is_deterministic(self):
+        pairs = {
+            "a": {"plain": b0._problem_stats(8, 2, 8), "hint": b0._problem_stats(8, 5, 8)},
+            "b": {"plain": b0._problem_stats(8, 3, 8), "hint": b0._problem_stats(8, 1, 8)},
+        }
+        first = b0.summarize_hint_gap(pairs, 8, resamples=200)["ci95"]
+        second = b0.summarize_hint_gap(pairs, 8, resamples=200)["ci95"]
+        self.assertEqual(first, second)
+
+    def test_empty_summary_is_undefined(self):
+        s = b0.summarize_hint_gap({}, 8)
+        self.assertEqual(s["n_problems"], 0)
+        self.assertIsNone(s["mean_gap"])
+        self.assertIn("not defined", b0.format_hint_gap_summary(s))
+
+
 if __name__ == "__main__":
     unittest.main()
 
@@ -221,3 +284,139 @@ class LeanVerifyCommandTest(unittest.TestCase):
         cmd = b0.lean_verify_command("runs/x/candidates/a.lean")
         self.assertEqual(cmd[:3], ["lake", "env", "lean"])
         self.assertTrue(Path(cmd[3]).is_absolute())
+
+
+class FakeGenConfig:
+    def __init__(self, eos):
+        self.eos_token_id = eos
+
+
+class FakeModel:
+    def __init__(self, eos):
+        self.generation_config = FakeGenConfig(eos)
+
+
+class FakeTokenizer:
+    def __init__(self, eos):
+        self.eos_token_id = eos
+
+
+class BackendSelectionTest(unittest.TestCase):
+    def test_defaults(self):
+        self.assertEqual(b0.DEFAULT_BACKEND, "transformers")
+        self.assertEqual(b0.BACKENDS, ("transformers", "mlx"))
+        self.assertEqual(b0.default_model_name(), "deepseek-ai/DeepSeek-Prover-V2-7B")
+        self.assertEqual(b0.default_model_name("transformers"), b0.TRANSFORMERS_MODEL_NAME)
+        self.assertEqual(
+            b0.default_model_name("mlx"), "mlx-community/DeepSeek-Prover-V2-7B-4bit"
+        )
+
+    def test_unknown_backend_rejected(self):
+        for call in (
+            lambda: b0.check_backend("cuda"),
+            lambda: b0.default_model_name("cuda"),
+            lambda: b0.load_model("x", backend="cuda"),
+            lambda: b0.generate_samples(None, None, [1], 1, 1, 0.6, 0, backend="cuda"),
+        ):
+            with self.assertRaises(ValueError):
+                call()
+
+    def test_generate_samples_dispatch(self):
+        from unittest import mock
+
+        with mock.patch.object(b0, "_generate_samples_mlx", return_value="mlx") as m, \
+                mock.patch.object(b0, "_generate_samples_transformers", return_value="hf") as t:
+            args = ("model", "tok", [1, 2], 3, 16, 0.6, 7)
+            self.assertEqual(b0.generate_samples(*args, backend="mlx"), "mlx")
+            self.assertEqual(b0.generate_samples(*args), "hf")
+            self.assertEqual(b0.generate_samples(*args, backend="transformers"), "hf")
+            m.assert_called_once_with(*args)
+            self.assertEqual(t.call_count, 2)
+
+    def test_load_model_dispatch_and_default_name(self):
+        from unittest import mock
+
+        with mock.patch.object(b0, "_load_transformers", return_value=("m", "t")) as hf:
+            self.assertEqual(b0.load_model(), ("m", "t"))
+            hf.assert_called_once_with(b0.TRANSFORMERS_MODEL_NAME)
+            hf.reset_mock()
+            b0.load_model("custom/name", backend="transformers")
+            hf.assert_called_once_with("custom/name")
+
+    def test_no_torch_or_transformers_import_at_module_level(self):
+        source = Path(b0.__file__).read_text(encoding="utf-8")
+        for line in source.splitlines():
+            if line.startswith(("import torch", "from torch", "import transformers", "from transformers")):
+                self.fail("module-level import: " + line)
+
+
+class NewTokenSequencesTest(unittest.TestCase):
+    def test_strips_prompt_and_cuts_at_eos(self):
+        rows = [[10, 11, 5, 6, 99, 0, 0], [10, 11, 7, 8, 9, 4, 3]]
+        self.assertEqual(
+            b0.new_token_sequences(rows, 2, [99]), [[5, 6], [7, 8, 9, 4, 3]]
+        )
+
+    def test_immediate_eos_gives_empty_completion(self):
+        self.assertEqual(b0.new_token_sequences([[1, 99, 0]], 1, [99]), [[]])
+
+    def test_multiple_stop_ids_and_empty_input(self):
+        self.assertEqual(b0.new_token_sequences([[1, 5, 98, 6]], 1, [99, 98]), [[5]])
+        self.assertEqual(b0.new_token_sequences([], 3, [99]), [])
+
+    def test_eos_ids_from_model_and_tokenizer(self):
+        self.assertEqual(b0._eos_ids(FakeTokenizer(100001), FakeModel(100001)), [100001])
+        self.assertEqual(b0._eos_ids(FakeTokenizer(2), FakeModel([5, 2])), [2, 5])
+        self.assertEqual(b0._eos_ids(FakeTokenizer(7), object()), [7])
+        self.assertEqual(b0._eos_ids(FakeTokenizer(None), FakeModel(None)), [])
+
+
+class CliBackendTest(unittest.TestCase):
+    def test_parser_default_and_choices(self):
+        import contextlib
+        import io
+        from unittest import mock
+
+        from mathesis import cli
+
+        seen = {}
+
+        def fake_b0(*args, **kwargs):
+            seen["b0"] = args
+            return 0
+
+        def fake_hg(*args, **kwargs):
+            seen["hg"] = args
+            return 0
+
+        with mock.patch.object(cli, "run_b0_command", fake_b0), \
+                mock.patch.object(cli, "run_hint_gap_command", fake_hg):
+            self.assertEqual(cli.main(["b0"]), 0)
+            self.assertEqual(seen["b0"][-1], "transformers")
+            self.assertEqual(cli.main(["b0", "--backend", "mlx"]), 0)
+            self.assertEqual(seen["b0"][-1], "mlx")
+            self.assertEqual(cli.main(["hint-gap"]), 0)
+            self.assertEqual(seen["hg"][-1], "transformers")
+            self.assertEqual(cli.main(["hint-gap", "--backend", "mlx"]), 0)
+            self.assertEqual(seen["hg"][-1], "mlx")
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                cli.main(["b0", "--backend", "cuda"])
+
+    def test_b0_command_passes_backend_and_model(self):
+        import contextlib
+        import io
+        import tempfile
+        from unittest import mock
+
+        from mathesis import cli
+
+        for backend, model in (("transformers", b0.TRANSFORMERS_MODEL_NAME),
+                               ("mlx", b0.MLX_MODEL_NAME)):
+            with tempfile.TemporaryDirectory() as out, \
+                    mock.patch.object(b0, "run_b0", return_value={"ok": 1}) as run, \
+                    mock.patch.object(b0, "format_b0_summary", return_value=""), \
+                    contextlib.redirect_stdout(io.StringIO()) as buf:
+                code = cli.run_b0_command(1, 1, 8, out=out, backend=backend)
+            self.assertEqual(code, 0)
+            self.assertEqual(run.call_args.kwargs["backend"], backend)
+            self.assertIn(model, buf.getvalue())
