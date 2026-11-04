@@ -135,5 +135,32 @@ class ExtractProblemTest(unittest.TestCase):
         self.assertEqual(report["problems"][1]["n_have"], 0)
 
 
+class FirstHaveHintFileTest(unittest.TestCase):
+    def test_first_have_only_and_problems_without_have_skipped(self):
+        report = {"source": "src", "problems": [
+            {"name": "a", "hints": ["h1 : x = 1", "h2 : y = 2"]},
+            {"name": "b", "hints": []},
+            {"name": "c", "hints": ["k : True"]},
+        ]}
+        out = eh.first_have_hint_file(report)
+        self.assertEqual(out["hints"], {"a": "h1 : x = 1", "c": "k : True"})
+        self.assertEqual(out["rule"], eh.FIRST_HAVE_RULE)
+        self.assertEqual(out["source"], "src")
+
+    def test_cli_writes_hint_file_loadable_by_hint_gap(self):
+        from mathesis import cli
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sub" / "hints.json"
+            with open(Path(tmp) / "report.json", "w", encoding="utf-8") as fh:
+                import contextlib
+                with contextlib.redirect_stdout(fh):
+                    self.assertEqual(eh.main(["lean_hard", "--first-have-hints", str(path)]), 0)
+            loaded = cli.load_hint_file(path)
+            report = json.loads((Path(tmp) / "report.json").read_text("utf-8"))
+        expected = {r["name"]: r["hints"][0] for r in report["problems"] if r["hints"]}
+        self.assertEqual(loaded["hints"], expected)
+        self.assertEqual(loaded["rule"], eh.FIRST_HAVE_RULE)
+
+
 if __name__ == "__main__":
     unittest.main()

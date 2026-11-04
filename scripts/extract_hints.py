@@ -116,17 +116,34 @@ def build_report(problems, source):
     return {"source": source, "summary": summarize(rows), "problems": rows}
 
 
+FIRST_HAVE_RULE = "first typed have in reference_proof, as '<name> : <statement>'"
+
+
+def first_have_hint_file(report):
+    """Hint file for `mathesis.cli hint-gap --hints`: each problem's first extracted have."""
+    hints = {row["name"]: row["hints"][0] for row in report["problems"] if row["hints"]}
+    return {"rule": FIRST_HAVE_RULE, "source": report["source"], "hints": hints}
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("benchmark", help="benchmark directory name under benchmark/, e.g. lean_hard")
     parser.add_argument("--out", type=Path, default=None,
                         help="write JSON here (parent directories are created); default stdout")
+    parser.add_argument("--first-have-hints", type=Path, default=None,
+                        help="also write a hint-gap --hints file using each problem's first have")
     args = parser.parse_args(argv)
 
     path = ROOT / "benchmark" / args.benchmark / "problems.json"
     if not path.is_file():
         parser.error("problems file not found: " + str(path))
     report = build_report(load_problems(path), str(path))
+    if args.first_have_hints is not None:
+        args.first_have_hints.parent.mkdir(parents=True, exist_ok=True)
+        args.first_have_hints.write_text(
+            json.dumps(first_have_hint_file(report), ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
     text = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.out is None:
         sys.stdout.write(text)

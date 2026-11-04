@@ -489,6 +489,78 @@ def _auxiliary_sha256(targets) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def load_hint_file(path) -> dict:
+    """Read a hint file: {"rule": str, "source": str, "hints": {problem name: hint text}}."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not isinstance(data.get("hints"), dict):
+        raise ValueError("hint file needs a 'hints' object: " + str(path))
+    if not isinstance(data.get("rule"), str) or not data["rule"]:
+        raise ValueError("hint file needs a non-empty 'rule': " + str(path))
+    hints = data["hints"]
+    if not hints:
+        raise ValueError("hint file has no hints: " + str(path))
+    for name, text in hints.items():
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("hint for " + str(name) + " must be a non-empty string")
+    return {"rule": data["rule"], "source": str(data.get("source", "")), "hints": dict(hints)}
+
+
+def hint_gap_targets(problems, limit=None, names=None, hints=None) -> list:
+    """Hint-gap targets in benchmark order.
+
+    Without `hints`: llm_baseline.select_hint_gap_problems (insight problems with an
+    auxiliary). With `hints` ({name: text}): every problem named in hints, regardless of
+    its insight label, with `auxiliary` replaced by the hint text; then names/limit
+    filter as in select_hint_gap_problems.
+    """
+    if hints is None:
+        return llm_baseline.select_hint_gap_problems(problems, limit, names)
+    if limit is not None and int(limit) < 1:
+        raise ValueError("limit must be >= 1")
+    known = {p["name"] for p in problems}
+    unknown = set(hints) - known
+    if unknown:
+        raise ValueError("hint file names problems not in the benchmark: " + ", ".join(sorted(unknown)))
+    targets = [dict(p, auxiliary=hints[p["name"]]) for p in problems if p["name"] in hints]
+    if names is not None:
+        if len(names) == 0:
+            raise ValueError("names must not be empty")
+        missing = set(names) - {p["name"] for p in targets}
+        if missing:
+            raise ValueError("not hint-gap targets: " + ", ".join(sorted(missing)))
+        targets = [p for p in targets if p["name"] in set(names)]
+    return targets if limit is None else targets[: int(limit)]
+
+
+def parse_shard(spec: str) -> tuple[int, int]:
+    """Parse "I/N" into (I, N) with N >= 1 and 0 <= I < N; ValueError otherwise."""
+    parts = str(spec).split("/")
+    if len(parts) != 2:
+        raise ValueError("--shard must look like I/N, got " + repr(spec))
+    try:
+        index, count = int(parts[0]), int(parts[1])
+    except ValueError:
+        raise ValueError("--shard must look like I/N with integers, got " + repr(spec)) from None
+    if count < 1 or not 0 <= index < count:
+        raise ValueError("--shard I/N needs N >= 1 and 0 <= I < N, got " + repr(spec))
+    return index, count
+
+
+def _check_shard(shard) -> tuple[int, int] | None:
+    """Normalise a shard given as None, "I/N" or (I, N); ValueError when invalid."""
+    if shard is None:
+        return None
+    if isinstance(shard, str):
+        return parse_shard(shard)
+    return parse_shard(str(int(shard[0])) + "/" + str(int(shard[1])))
+
+
+def _shard_subset(items: list, shard: tuple[int, int]) -> list:
+    """Round-robin shard: entries whose index % N == I."""
+    index, count = shard
+    return [item for position, item in enumerate(items) if position % count == index]
+
+
 def _common_run_args(
     backend: str,
     k: int,
@@ -531,6 +603,7 @@ def run_b0_command(
     benchmark_dir: str | None = None,
     backend: str = llm_baseline.DEFAULT_BACKEND,
     verify_workers: int = llm_baseline.DEFAULT_VERIFY_WORKERS,
+    shard=None,
 ) -> int:
     if k < 1 or max_tokens < 1 or (limit is not None and limit < 1):
         print("b0 needs --k >= 1, --max-tokens >= 1 and --limit >= 1")
@@ -538,7 +611,21 @@ def run_b0_command(
     if verify_workers < 1:
         print("b0 needs --verify-workers >= 1")
         return 2
+    try:
+        shard = _check_shard(shard)
+    except ValueError as exc:
+        print("b0: " + str(exc))
+        return 2
+    if shard is not None and controls:
+        print("b0: --shard cannot be combined with --controls")
+        return 2
     problems = llm_baseline.load_b0_problems(None if controls else limit, benchmark_dir)
+    full_names = [prob["name"] for prob in problems]
+    if shard is not None:
+        problems = _shard_subset(problems, shard)
+        if not problems:
+            print("b0: shard " + str(shard[0]) + "/" + str(shard[1]) + " has no problems")
+            return 2
     run_names = [prob["name"] for prob in problems]
     if controls:
         # Only the control problems are verified (a missing one fails in run_controls).
@@ -550,6 +637,9 @@ def run_b0_command(
     except llm_baseline.EnvironmentFailure as exc:
         print("b0: " + str(exc))
         return 2
+    base_args["shard"] = None if shard is None else list(shard)
+    if shard is not None:
+        base_args["full_problem_names"] = full_names
     if controls:
         base_args["control_problems"] = list(llm_baseline.CONTROL_PROBLEMS)
         run = open_run(out, "b0-controls", base_args, int(seed))
@@ -606,6 +696,8 @@ def run_hint_gap_command(
     names: list[str] | None = None,
     backend: str = llm_baseline.DEFAULT_BACKEND,
     verify_workers: int = llm_baseline.DEFAULT_VERIFY_WORKERS,
+    shard=None,
+    hints_file: str | None = None,
 ) -> int:
     if k < 1 or max_tokens < 1 or (limit is not None and limit < 1):
         print("hint-gap needs --k >= 1, --max-tokens >= 1 and --limit >= 1")
@@ -616,15 +708,33 @@ def run_hint_gap_command(
     if names is not None and any(not name for name in names):
         print("hint-gap needs --problems as a non-empty comma-separated list of names")
         return 2
-    problems = llm_baseline.load_b0_problems(None, benchmark_dir)
     try:
-        targets = llm_baseline.select_hint_gap_problems(problems, limit, names)
+        shard = _check_shard(shard)
     except ValueError as exc:
+        print("hint-gap: " + str(exc))
+        return 2
+    problems = llm_baseline.load_b0_problems(None, benchmark_dir)
+    hint_info = None
+    try:
+        hints = None
+        if hints_file is not None:
+            hint_info = load_hint_file(hints_file)
+            hints = hint_info["hints"]
+        targets = hint_gap_targets(problems, limit, names, hints)
+    except (OSError, ValueError) as exc:
         print("hint-gap: " + str(exc))
         return 2
     if not targets:
         print("hint-gap: no insight problems with an auxiliary construction in this benchmark")
         return 2
+    full_names = [p["name"] for p in targets]
+    if shard is not None:
+        targets = _shard_subset(targets, shard)
+        if not targets:
+            print("hint-gap: shard " + str(shard[0]) + "/" + str(shard[1]) + " has no problems")
+            return 2
+        # The shard's own subset becomes the selection, so run_hint_gap agrees with the manifest.
+        names = [p["name"] for p in targets]
     target_names = [p["name"] for p in targets]
     try:
         base_args = _common_run_args(
@@ -633,9 +743,16 @@ def run_hint_gap_command(
     except llm_baseline.EnvironmentFailure as exc:
         print("hint-gap: " + str(exc))
         return 2
+    base_args["shard"] = None if shard is None else list(shard)
+    if shard is not None:
+        base_args["full_problem_names"] = full_names
     base_args["hint_prompt_template"] = llm_baseline.HINT_PROMPT_TEMPLATE
     base_args["problems"] = target_names
     base_args["auxiliary_sha256"] = _auxiliary_sha256(targets)
+    if hint_info is not None:
+        base_args["hints_file"] = str(Path(hints_file).resolve())
+        base_args["hints_file_sha256"] = file_sha256(Path(hints_file))
+        base_args["hint_rule"] = hint_info["rule"]
     print("hint-gap problems: " + str(len(targets)))
     print("hint-gap backend: " + backend + " model: " + llm_baseline.default_model_name(backend))
     print("hint-gap k: " + str(k) + " max_tokens: " + str(max_tokens))
@@ -647,7 +764,7 @@ def run_hint_gap_command(
             outcome.summary = llm_baseline.run_hint_gap(
                 run, problems, k=k, max_tokens=max_tokens, seed=int(seed),
                 limit=limit, names=names, backend=backend,
-                verify_workers=verify_workers,
+                verify_workers=verify_workers, targets=targets,
             )
     except Exception as exc:
         print("hint-gap failed: " + str(exc))
@@ -764,6 +881,12 @@ def main(argv=None) -> int:
         default=llm_baseline.DEFAULT_VERIFY_WORKERS,
         help="concurrent Lean checks (default: %d)" % llm_baseline.DEFAULT_VERIFY_WORKERS,
     )
+    b0_parser.add_argument(
+        "--shard",
+        type=str,
+        default=None,
+        help="I/N: run only problems whose index %% N == I (merge with scripts/merge_shards.py)",
+    )
     hint_parser = sub.add_parser("hint-gap")
     hint_parser.add_argument("--k", type=int, default=llm_baseline.DEFAULT_K)
     hint_parser.add_argument("--limit", type=int, default=None)
@@ -797,7 +920,25 @@ def main(argv=None) -> int:
         default=llm_baseline.DEFAULT_VERIFY_WORKERS,
         help="concurrent Lean checks (default: %d)" % llm_baseline.DEFAULT_VERIFY_WORKERS,
     )
+    hint_parser.add_argument(
+        "--shard",
+        type=str,
+        default=None,
+        help="I/N: run only problems whose index %% N == I (merge with scripts/merge_shards.py)",
+    )
+    hint_parser.add_argument(
+        "--hints",
+        type=str,
+        default=None,
+        help="hint file (JSON: rule, source, hints{name: text}); targets become its problems",
+    )
     args = parser.parse_args(argv)
+    if args.command in ("b0", "hint-gap") and args.shard is not None:
+        try:
+            parse_shard(args.shard)
+        except ValueError as exc:
+            print(args.command + ": " + str(exc))
+            return 2
     if args.command == "smoke":
         return run_smoke()
     if args.command == "pilot":
@@ -829,12 +970,14 @@ def main(argv=None) -> int:
         return run_b0_command(
             args.k, args.limit, args.max_tokens, args.seed, args.out, args.controls, args.benchmark,
             args.backend, verify_workers=args.verify_workers,
+            shard=args.shard,
         )
     if args.command == "hint-gap":
         names = args.problems.split(",") if args.problems is not None else None
         return run_hint_gap_command(
             args.k, args.limit, args.max_tokens, args.seed, args.out, args.benchmark, names,
-            args.backend, verify_workers=args.verify_workers,
+            args.backend, verify_workers=args.verify_workers, shard=args.shard,
+            hints_file=args.hints,
         )
     return 0
 

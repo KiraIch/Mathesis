@@ -1085,15 +1085,22 @@ def run_hint_gap(run, problems, k, max_tokens, seed, limit=None, names=None,
                  temp=DEFAULT_TEMP, lean_dir=None, model_name=None,
                  backend=DEFAULT_BACKEND, progress=print,
                  verify_workers: int = DEFAULT_VERIFY_WORKERS,
-                 lean_check: bool = True) -> dict:
+                 lean_check: bool = True, targets=None) -> dict:
     """Sample k completions with and without the auxiliary hint for each target problem.
 
     Lean checks run on `verify_workers` threads shared by all prompts; rows and
-    progress lines keep the sequential (plain, then hint) order.
+    progress lines keep the sequential (plain, then hint) order. `targets`, when
+    given, is used as-is (each entry's `auxiliary` is the hint) instead of
+    selecting from `problems` with limit/names.
     """
     _check_verify_workers(verify_workers)
     _check_run_sizes(k, max_tokens)
-    targets = select_hint_gap_problems(problems, limit, names)
+    if targets is None:
+        targets = select_hint_gap_problems(problems, limit, names)
+    else:
+        targets = list(targets)
+        if not targets:
+            raise ValueError("targets must not be empty")
     info = preflight_lean(lean_dir, run.path / "preflight") if lean_check else None
     model, tokenizer = load_model(model_name, backend)
     pairs = {}
