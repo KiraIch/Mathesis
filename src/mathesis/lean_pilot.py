@@ -61,10 +61,13 @@ def validate_lean_pilot(problems, base_dir=None):
         base = Path(base_dir)
     if not isinstance(problems, list):
         raise ValueError("lean pilot problems must be a list")
-    count = len(problems)
     # 38 is the original lean_hard size; 100 is the upper end of the sprint benchmark (paper-plan §3, 80-100).
+    # Retired entries stay in the file for comparability with earlier runs but do not count.
+    count = sum(
+        1 for entry in problems if not (isinstance(entry, dict) and entry.get("retired"))
+    )
     if count < 38 or count > 100:
-        raise ValueError("lean pilot needs 38 to 100 problems got " + str(count))
+        raise ValueError("lean pilot needs 38 to 100 active problems got " + str(count))
     seen_names = set()
     seen_theorems = set()
     insight_count = 0
@@ -166,6 +169,10 @@ def validate_lean_pilot(problems, base_dir=None):
                     raise ValueError(
                         "each used_in must be a non-empty string " + repr(name)
                     )
+        if "retired" in entry:
+            retired_value = entry["retired"]
+            if not isinstance(retired_value, str) or not retired_value.strip():
+                raise ValueError("retired must be a non-empty string " + repr(name))
     if insight_count < 12:
         raise ValueError("need at least 12 insight problems got " + str(insight_count))
     if routine_count < 12:

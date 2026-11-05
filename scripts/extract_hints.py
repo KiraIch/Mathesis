@@ -82,6 +82,7 @@ def extract_problem(entry):
         "hints": [name + " : " + stmt for name, stmt in statements],
         "current_auxiliary": auxiliary,
         "auxiliary_matches_have": matches,
+        "retired": str(entry.get("retired", "")),
     }
 
 
@@ -121,7 +122,8 @@ FIRST_HAVE_RULE = "first typed have in reference_proof, as '<name> : <statement>
 
 def first_have_hint_file(report):
     """Hint file for `mathesis.cli hint-gap --hints`: each problem's first extracted have."""
-    hints = {row["name"]: row["hints"][0] for row in report["problems"] if row["hints"]}
+    hints = {row["name"]: row["hints"][0] for row in report["problems"]
+             if row["hints"] and not row.get("retired")}
     return {"rule": FIRST_HAVE_RULE, "source": report["source"], "hints": hints}
 
 

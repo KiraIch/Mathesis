@@ -141,6 +141,7 @@ class FirstHaveHintFileTest(unittest.TestCase):
             {"name": "a", "hints": ["h1 : x = 1", "h2 : y = 2"]},
             {"name": "b", "hints": []},
             {"name": "c", "hints": ["k : True"]},
+            {"name": "d", "hints": ["r : False"], "retired": "ceiling"},
         ]}
         out = eh.first_have_hint_file(report)
         self.assertEqual(out["hints"], {"a": "h1 : x = 1", "c": "k : True"})
@@ -157,7 +158,12 @@ class FirstHaveHintFileTest(unittest.TestCase):
                     self.assertEqual(eh.main(["lean_hard", "--first-have-hints", str(path)]), 0)
             loaded = cli.load_hint_file(path)
             report = json.loads((Path(tmp) / "report.json").read_text("utf-8"))
-        expected = {r["name"]: r["hints"][0] for r in report["problems"] if r["hints"]}
+        expected = {
+            r["name"]: r["hints"][0]
+            for r in report["problems"]
+            if r["hints"] and not r.get("retired")
+        }
+        self.assertTrue(any(r.get("retired") and r["hints"] for r in report["problems"]))
         self.assertEqual(loaded["hints"], expected)
         self.assertEqual(loaded["rule"], eh.FIRST_HAVE_RULE)
 

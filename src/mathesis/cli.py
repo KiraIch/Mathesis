@@ -604,6 +604,7 @@ def run_b0_command(
     backend: str = llm_baseline.DEFAULT_BACKEND,
     verify_workers: int = llm_baseline.DEFAULT_VERIFY_WORKERS,
     shard=None,
+    names: list[str] | None = None,
 ) -> int:
     if k < 1 or max_tokens < 1 or (limit is not None and limit < 1):
         print("b0 needs --k >= 1, --max-tokens >= 1 and --limit >= 1")
@@ -619,7 +620,20 @@ def run_b0_command(
     if shard is not None and controls:
         print("b0: --shard cannot be combined with --controls")
         return 2
+    if names is not None:
+        if controls:
+            print("b0: --problems cannot be combined with --controls")
+            return 2
+        if len(names) == 0 or any(not name for name in names):
+            print("b0 needs --problems as a non-empty comma-separated list of names")
+            return 2
     problems = llm_baseline.load_b0_problems(None if controls else limit, benchmark_dir)
+    if names is not None:
+        missing = set(names) - {prob["name"] for prob in problems}
+        if missing:
+            print("b0: unknown problems: " + ", ".join(sorted(missing)))
+            return 2
+        problems = [prob for prob in problems if prob["name"] in set(names)]
     full_names = [prob["name"] for prob in problems]
     if shard is not None:
         problems = _shard_subset(problems, shard)
@@ -887,6 +901,12 @@ def main(argv=None) -> int:
         default=None,
         help="I/N: run only problems whose index %% N == I (merge with scripts/merge_shards.py)",
     )
+    b0_parser.add_argument(
+        "--problems",
+        type=str,
+        default=None,
+        help="comma-separated problem names to restrict the run to (benchmark order kept)",
+    )
     hint_parser = sub.add_parser("hint-gap")
     hint_parser.add_argument("--k", type=int, default=llm_baseline.DEFAULT_K)
     hint_parser.add_argument("--limit", type=int, default=None)
@@ -971,6 +991,7 @@ def main(argv=None) -> int:
             args.k, args.limit, args.max_tokens, args.seed, args.out, args.controls, args.benchmark,
             args.backend, verify_workers=args.verify_workers,
             shard=args.shard,
+            names=args.problems.split(",") if args.problems is not None else None,
         )
     if args.command == "hint-gap":
         names = args.problems.split(",") if args.problems is not None else None

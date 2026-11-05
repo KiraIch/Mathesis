@@ -548,6 +548,7 @@ def load_b0_problems(limit=None, benchmark_dir=None):
                 "reference_proof": [str(t) for t in entry["reference_proof"]],
                 "auxiliary": str(entry.get("auxiliary", "")),
                 "insight": bool(entry.get("insight", False)),
+                "retired": str(entry.get("retired", "")),
             }
         )
     return problems
@@ -1069,7 +1070,8 @@ def select_hint_gap_problems(problems, limit=None, names=None) -> list:
     """
     if limit is not None and int(limit) < 1:
         raise ValueError("limit must be >= 1")
-    targets = [p for p in problems if p["insight"] and p["auxiliary"]]
+    # Retired problems (e.g. saturated at the plain ceiling) are kept for B0 but not targeted.
+    targets = [p for p in problems if p["insight"] and p["auxiliary"] and not p.get("retired")]
     if names is not None:
         if len(names) == 0:
             raise ValueError("names must not be empty")

@@ -369,6 +369,75 @@ class HintFileTest(unittest.TestCase):
             merge.merge_shards(shards, self.tmp / "merged")
 
 
+class RetiredAndB0ProblemsTest(unittest.TestCase):
+    def test_retired_problems_are_not_hint_gap_targets(self):
+        problems = llm_baseline.load_b0_problems(None, None)
+        base = llm_baseline.select_hint_gap_problems(problems)
+        retired = [dict(p, retired="saturated") if p["name"] == base[0]["name"] else p
+                   for p in problems]
+        names = [p["name"] for p in llm_baseline.select_hint_gap_problems(retired)]
+        self.assertEqual(names, [p["name"] for p in base[1:]])
+        with self.assertRaises(ValueError):
+            llm_baseline.select_hint_gap_problems(retired, names=[base[0]["name"]])
+
+    def test_lean_pilot_rejects_blank_retired(self):
+        from mathesis import lean_pilot
+        base = lean_pilot.default_lean_pilot_dir()
+        raw = json.loads((base / "problems.json").read_text("utf-8"))
+        items = raw["problems"] if isinstance(raw, dict) else raw
+        for value, ok in (("saturated 16/16", True), ("  ", False), (3, False)):
+            data = [dict(e) for e in items]
+            data[0]["retired"] = value
+            if ok:
+                self.assertTrue(lean_pilot.validate_lean_pilot(data, base_dir=base))
+            else:
+                with self.assertRaises(ValueError):
+                    lean_pilot.validate_lean_pilot(data, base_dir=base)
+
+    def test_retired_entries_do_not_count_toward_size_bounds(self):
+        from mathesis import lean_pilot
+        base = lean_pilot.default_lean_pilot_dir()
+        raw = json.loads((base / "problems.json").read_text("utf-8"))
+        items = [dict(e) for e in (raw["problems"] if isinstance(raw, dict) else raw)]
+        active_allowed = len(items) - 38
+        for i in range(active_allowed):
+            items[i]["retired"] = "test"
+        self.assertTrue(lean_pilot.validate_lean_pilot(items, base_dir=base))
+        items[active_allowed]["retired"] = "test"
+        with self.assertRaisesRegex(ValueError, "active problems"):
+            lean_pilot.validate_lean_pilot(items, base_dir=base)
+
+    def test_b0_problems_filter_keeps_benchmark_order(self):
+        full = [p["name"] for p in llm_baseline.load_b0_problems(None, None)]
+        wanted = [full[5], full[2], full[9]]
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, patched = run_cli("b0", tmp, extra={"names": wanted})
+            self.assertEqual(rc, 0)
+            args = manifest_of(only_dir(tmp))["args"]
+        self.assertEqual(args["problem_names"], [full[2], full[5], full[9]])
+        self.assertEqual([p["name"] for p in patched.call_args[0][1]], [full[2], full[5], full[9]])
+
+    def test_b0_problems_filter_with_shard(self):
+        full = [p["name"] for p in llm_baseline.load_b0_problems(None, None)]
+        wanted = full[:6]
+        with tempfile.TemporaryDirectory() as tmp:
+            rc, _ = run_cli("b0", tmp, shard="1/2", extra={"names": wanted})
+            self.assertEqual(rc, 0)
+            args = manifest_of(only_dir(tmp))["args"]
+        self.assertEqual(args["full_problem_names"], wanted)
+        self.assertEqual(args["problem_names"], wanted[1::2])
+
+    def test_b0_problems_filter_rejects_bad_input(self):
+        for names in (["no_such_problem"], [""], []):
+            with tempfile.TemporaryDirectory() as tmp:
+                rc, patched = run_cli("b0", tmp, extra={"names": names})
+                self.assertEqual(rc, 2, names)
+                patched.assert_not_called()
+                self.assertEqual(list(Path(tmp).iterdir()), [])
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cli.main(["b0", "--controls", "--problems", "x"]), 2)
+
+
 class LauncherTest(unittest.TestCase):
     def test_parse_gpus(self):
         self.assertEqual(launcher.parse_gpus("0,1, 3"), ["0", "1", "3"])

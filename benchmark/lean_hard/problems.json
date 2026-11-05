@@ -20,7 +20,8 @@
       "contamination_risk": "low",
       "mathlib_match": "none",
       "audit_notes": "three-variable AM-GM in cubic form; no direct Mathlib statement in this shape",
-      "bench_split": "dev"
+      "bench_split": "dev",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_ineq_prod_pairs",
@@ -65,7 +66,8 @@
       "contamination_risk": "medium",
       "mathlib_match": "variant",
       "audit_notes": "Cauchy-Schwarz in R^3 stated polynomially; Mathlib has inner-product versions only",
-      "bench_split": "dev"
+      "bench_split": "dev",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_ineq_quartic",
@@ -88,7 +90,8 @@
       "contamination_risk": "low",
       "mathlib_match": "none",
       "audit_notes": "factorization a^4+b^4-a^3b-ab^3 = (a-b)^2(a^2+ab+b^2)",
-      "bench_split": "dev"
+      "bench_split": "dev",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_ineq_inv_add_two",
@@ -163,7 +166,8 @@
       "contamination_risk": "low",
       "mathlib_match": "none",
       "audit_notes": "2x^3 - 3x^2 + 1 = (x-1)^2(2x+1)",
-      "bench_split": "dev"
+      "bench_split": "dev",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_ineq_max_avg",
@@ -186,7 +190,8 @@
       "contamination_risk": "high",
       "mathlib_match": "variant",
       "audit_notes": "average is at most the max",
-      "bench_split": "dev"
+      "bench_split": "dev",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_real_geom_mean_two",
@@ -295,7 +300,8 @@
       "contamination_risk": "low",
       "mathlib_match": "none",
       "audit_notes": "Cauchy-Schwarz in R^2 with two pairs of variables",
-      "bench_split": "dev"
+      "bench_split": "dev",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_nat_sq_sum",
@@ -396,7 +402,8 @@
       "contamination_risk": "low",
       "mathlib_match": "none",
       "audit_notes": "divisibility by induction with an explicit step identity",
-      "bench_split": "dev"
+      "bench_split": "dev",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_nat_dvd6_cubic",
@@ -426,7 +433,8 @@
       "contamination_risk": "low",
       "mathlib_match": "none",
       "audit_notes": "needs a second divisibility fact inside the induction step",
-      "bench_split": "dev"
+      "bench_split": "dev",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_nat_mod4_square",
@@ -1103,7 +1111,8 @@
       "bench_split": "dev",
       "contamination_risk": "low",
       "mathlib_match": "none",
-      "audit_notes": "Authored degree-3 symmetric inequality mixing the two identities; not in Mathlib."
+      "audit_notes": "Authored degree-3 symmetric inequality mixing the two identities; not in Mathlib.",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_real_inv_power_five",
@@ -1200,7 +1209,8 @@
       "bench_split": "dev",
       "contamination_risk": "low",
       "mathlib_match": "none",
-      "audit_notes": "Quadratic-type Cauchy equation with a specific value; authored, no Mathlib match."
+      "audit_notes": "Quadratic-type Cauchy equation with a specific value; authored, no Mathlib match.",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_real_cubic_root_exists",
@@ -1283,7 +1293,8 @@
       "bench_split": "dev",
       "contamination_risk": "low",
       "mathlib_match": "none",
-      "audit_notes": "Positivity of the 5th cyclotomic polynomial over reals via SOS; authored, no Mathlib match."
+      "audit_notes": "Positivity of the 5th cyclotomic polynomial over reals via SOS; authored, no Mathlib match.",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_real_sqrt_sum_lt_sqrt",
@@ -1335,7 +1346,8 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "variant",
-      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance."
+      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance.",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_nat_sq_sum_mod_three",
@@ -1361,7 +1373,8 @@
       "bench_split": "dev",
       "contamination_risk": "low",
       "mathlib_match": "none",
-      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance."
+      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance.",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_nat_dvd_sq_sum_eq",
@@ -1501,7 +1514,8 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "variant",
-      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance. [2026-11-04 audit] Direct consequence of Mathlib Function.cantor_surjective (Logic/Function/Basic.lean:374)."
+      "audit_notes": "Self-designed statement; related to a classical fact but not a direct Mathlib lemma instance. [2026-11-04 audit] Direct consequence of Mathlib Function.cantor_surjective (Logic/Function/Basic.lean:374).",
+      "retired": "2026-11-04: plain ceiling, 16/16 over B0 seeds 0 and 1 (20261103T122531Z_b0, 20261104T054619Z_b0-merged); kept for B0 comparability, excluded from hint-gap targets"
     },
     {
       "name": "lean_logic_serial_transitive_finite_refl",
@@ -2214,6 +2228,536 @@
       "contamination_risk": "low",
       "mathlib_match": "none",
       "audit_notes": "Authored bound on the sum of residues i % 3; induction with a residue bound, no Mathlib statement of this shape.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_ineq_r_quintic_split",
+      "theorem": "∀ a b : ℝ, 0 ≤ a → 0 ≤ b → a ^ 2 * b ^ 2 * (a + b) ≤ a ^ 5 + b ^ 5",
+      "family": "ineq",
+      "insight": true,
+      "reference_proof": [
+        "intro a b ha hb",
+        "have h : a ^ 5 + b ^ 5 - a ^ 2 * b ^ 2 * (a + b) = (a - b) ^ 2 * (a + b) * (a ^ 2 + a * b + b ^ 2) := by ring",
+        "have h2 : 0 ≤ (a - b) ^ 2 * (a + b) * (a ^ 2 + a * b + b ^ 2) := by positivity",
+        "linarith"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/ineq_r_quintic_split.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "a^5+b^5-a^2b^2(a+b) factors as (a-b)^2(a+b)(a^2+ab+b^2)",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: nlinarith [sq_nonneg (a-b), sq_nonneg (a+b), mul_nonneg ha hb] fails.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_ineq_r_vasc_sos",
+      "theorem": "∀ a b c : ℝ, 3 * (a ^ 3 * b + b ^ 3 * c + c ^ 3 * a) ≤ (a ^ 2 + b ^ 2 + c ^ 2) ^ 2",
+      "family": "ineq",
+      "insight": true,
+      "reference_proof": [
+        "intro a b c",
+        "have h : 2 * ((a ^ 2 + b ^ 2 + c ^ 2) ^ 2 - 3 * (a ^ 3 * b + b ^ 3 * c + c ^ 3 * a)) = (a ^ 2 - 2 * a * b + b * c - c ^ 2 + c * a) ^ 2 + (b ^ 2 - 2 * b * c + c * a - a ^ 2 + a * b) ^ 2 + (c ^ 2 - 2 * c * a + a * b - b ^ 2 + b * c) ^ 2 := by ring",
+        "nlinarith [h, sq_nonneg (a ^ 2 - 2 * a * b + b * c - c ^ 2 + c * a), sq_nonneg (b ^ 2 - 2 * b * c + c * a - a ^ 2 + a * b), sq_nonneg (c ^ 2 - 2 * c * a + a * b - b ^ 2 + b * c)]"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/ineq_r_vasc_sos.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "2*(LHS slack) equals a sum of three explicit squares (Vasc identity)",
+      "difficulty": 5,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: nlinarith [sq_nonneg (a-b), sq_nonneg (b-c), sq_nonneg (c-a), sq_nonneg (a+b+c)] fails.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_ineq_r_sq_plus_recip",
+      "theorem": "∀ x : ℝ, 0 < x → 12 ≤ x ^ 2 + 16 / x",
+      "family": "ineq",
+      "insight": true,
+      "reference_proof": [
+        "intro x hx",
+        "have h : x ^ 2 + 16 / x - 12 = (x - 2) ^ 2 * (x + 4) / x := by field_simp; ring",
+        "have h2 : 0 ≤ (x - 2) ^ 2 * (x + 4) / x := by positivity",
+        "linarith"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/ineq_r_sq_plus_recip.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "x^2+16/x-12 = (x-2)^2(x+4)/x",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: rw sub_nonneg; nlinarith [sq_nonneg (x-2), sq_nonneg x, mul_pos hx hx] fails.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_ineq_r_inv_sq_pair",
+      "theorem": "∀ a b : ℝ, 0 < a → 0 < b → 1 / (1 + a * b) ≤ 1 / (1 + a) ^ 2 + 1 / (1 + b) ^ 2",
+      "family": "ineq",
+      "insight": true,
+      "reference_proof": [
+        "intro a b ha hb",
+        "have h : 1 / (1 + a) ^ 2 + 1 / (1 + b) ^ 2 - 1 / (1 + a * b) = (a * b * (a - b) ^ 2 + (a * b - 1) ^ 2) / ((1 + a) ^ 2 * (1 + b) ^ 2 * (1 + a * b)) := by field_simp; ring",
+        "have h2 : 0 ≤ (a * b * (a - b) ^ 2 + (a * b - 1) ^ 2) / ((1 + a) ^ 2 * (1 + b) ^ 2 * (1 + a * b)) := by positivity",
+        "linarith"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/ineq_r_inv_sq_pair.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "1/(1+a)^2+1/(1+b)^2-1/(1+ab) = (ab(a-b)^2+(ab-1)^2)/((1+a)^2(1+b)^2(1+ab))",
+      "difficulty": 4,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: nlinarith [sq_nonneg (a-b), sq_nonneg (a*b-1), mul_pos ha hb] fails without clearing denominators.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_ineq_r_pair_sq_product",
+      "theorem": "∀ a b c : ℝ, 8 * (a * b * c) ^ 2 ≤ (a ^ 2 + b ^ 2) * (b ^ 2 + c ^ 2) * (c ^ 2 + a ^ 2)",
+      "family": "ineq",
+      "insight": true,
+      "reference_proof": [
+        "intro a b c",
+        "have h : (a ^ 2 + b ^ 2) * (b ^ 2 + c ^ 2) * (c ^ 2 + a ^ 2) - 8 * (a * b * c) ^ 2 = c ^ 2 * (a ^ 2 - b ^ 2) ^ 2 + a ^ 2 * (b ^ 2 - c ^ 2) ^ 2 + b ^ 2 * (c ^ 2 - a ^ 2) ^ 2 := by ring",
+        "have h2 : 0 ≤ c ^ 2 * (a ^ 2 - b ^ 2) ^ 2 + a ^ 2 * (b ^ 2 - c ^ 2) ^ 2 + b ^ 2 * (c ^ 2 - a ^ 2) ^ 2 := by positivity",
+        "linarith"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/ineq_r_pair_sq_product.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "(a^2+b^2)(b^2+c^2)(c^2+a^2)-8(abc)^2 = c^2(a^2-b^2)^2+a^2(b^2-c^2)^2+b^2(c^2-a^2)^2",
+      "difficulty": 4,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: nlinarith [sq_nonneg (a-b), sq_nonneg (b-c), sq_nonneg (c-a), sq_nonneg (a*b), sq_nonneg (b*c), sq_nonneg (c*a)] fails.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_real_r_nested_diff",
+      "theorem": "Real.sqrt (9 + 4 * Real.sqrt 5) - Real.sqrt (9 - 4 * Real.sqrt 5) = 4",
+      "family": "real",
+      "insight": true,
+      "reference_proof": [
+        "have h : Real.sqrt (9 + 4 * Real.sqrt 5) = Real.sqrt 5 + 2 := by",
+        "  have h5 : Real.sqrt 5 ^ 2 = 5 := Real.sq_sqrt (by norm_num)",
+        "  rw [Real.sqrt_eq_iff_mul_self_eq (by positivity) (by positivity)]",
+        "  nlinarith [h5]",
+        "have h3 : Real.sqrt (9 - 4 * Real.sqrt 5) = Real.sqrt 5 - 2 := by",
+        "  have h5 : Real.sqrt 5 ^ 2 = 5 := Real.sq_sqrt (by norm_num)",
+        "  have h6 : (2 : ℝ) ≤ Real.sqrt 5 := by nlinarith [Real.sqrt_nonneg 5]",
+        "  have h7 : (4 : ℝ) * Real.sqrt 5 ≤ 9 := by nlinarith [Real.sqrt_nonneg 5]",
+        "  rw [Real.sqrt_eq_iff_mul_self_eq (by linarith) (by linarith)]",
+        "  nlinarith [h5]",
+        "rw [h, h3]",
+        "ring"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/real_r_nested_diff.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "sqrt(9+4 sqrt5) = sqrt5+2, i.e. the radicand is a perfect square",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: nlinarith [sq_sqrt 5, sqrt_nonneg 5] fails.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_real_r_diff_prod_fourth",
+      "theorem": "∀ a b : ℝ, a - b = 2 → a * b = 3 → a ^ 4 + b ^ 4 = 82",
+      "family": "real",
+      "insight": true,
+      "reference_proof": [
+        "intro a b h1 h2",
+        "have h : a ^ 2 + b ^ 2 = 10 := by nlinarith [h1, h2]",
+        "nlinarith [h, h2]"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/real_r_diff_prod_fourth.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "a^2+b^2 = 10 from (a-b)^2 + 2ab",
+      "difficulty": 2,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: nlinarith [h1, h2, sq_nonneg (a-b), sq_nonneg (a+b)] fails.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_real_r_quad_fun_twenty",
+      "theorem": "∀ f : ℝ → ℝ, (∀ x y : ℝ, f (x + y) = f x + f y + 2 * x * y) → f 1 = 3 → f 20 = 440",
+      "family": "real",
+      "insight": true,
+      "reference_proof": [
+        "intro f hf h1",
+        "have h : ∀ n : ℕ, f (n : ℝ) = (n : ℝ) ^ 2 + 2 * (n : ℝ) := by",
+        "  intro n",
+        "  induction n with",
+        "  | zero =>",
+        "    have h0 := hf 0 0",
+        "    simp at h0 ⊢",
+        "    linarith",
+        "  | succ k ih =>",
+        "    have := hf (k : ℝ) 1",
+        "    push_cast",
+        "    rw [this, ih, h1]",
+        "    ring",
+        "have h20 := h 20",
+        "norm_num at h20",
+        "exact h20"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/real_r_quad_fun_twenty.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "strengthened induction: f(n) = n^2 + 2n for all natural n",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: simp_all; linarith [hf 1 1, hf 2 1] fails.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_real_r_cube_recip_sum",
+      "theorem": "∀ x : ℝ, x ≠ 0 → x + 1 / x = 3 → x ^ 3 + 1 / x ^ 3 = 18",
+      "family": "real",
+      "insight": true,
+      "reference_proof": [
+        "intro x hx hs",
+        "have h : x ^ 3 + 1 / x ^ 3 = (x + 1 / x) ^ 3 - 3 * (x + 1 / x) := by field_simp; ring",
+        "rw [h, hs]",
+        "norm_num"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/real_r_cube_recip_sum.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "x^3+1/x^3 = (x+1/x)^3 - 3(x+1/x)",
+      "difficulty": 2,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: field_simp at *; nlinarith [hs] fails.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_real_r_qm_sqrt_pair",
+      "theorem": "∀ a : ℝ, 1 ≤ a → Real.sqrt (a + 3) + Real.sqrt (a - 1) ≤ 2 * Real.sqrt (a + 1)",
+      "family": "real",
+      "insight": true,
+      "reference_proof": [
+        "intro a ha",
+        "have h : (Real.sqrt (a + 3) + Real.sqrt (a - 1)) ^ 2 ≤ (2 * Real.sqrt (a + 1)) ^ 2 := by",
+        "  have e1 : Real.sqrt (a + 3) ^ 2 = a + 3 := Real.sq_sqrt (by linarith)",
+        "  have e2 : Real.sqrt (a - 1) ^ 2 = a - 1 := Real.sq_sqrt (by linarith)",
+        "  have e3 : Real.sqrt (a + 1) ^ 2 = a + 1 := Real.sq_sqrt (by linarith)",
+        "  nlinarith [sq_nonneg (Real.sqrt (a + 3) - Real.sqrt (a - 1))]",
+        "exact le_of_sq_le_sq h (by positivity)"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/real_r_qm_sqrt_pair.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "(sqrt(a+3)+sqrt(a-1))^2 <= (2 sqrt(a+1))^2 via QM-AM",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original variant authored for this benchmark, no matching Mathlib statement; single-tactic attempt: nlinarith with sqrt_nonneg and sq_nonneg of the difference fails.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_nat_r_sophie_germain_composite",
+      "theorem": "∀ m : ℕ, ¬ Nat.Prime ((m + 2) ^ 4 + 4)",
+      "family": "nat",
+      "insight": true,
+      "reference_proof": [
+        "have key : ∀ m : ℕ, (m + 2) ^ 4 + 4 = ((m + 2) ^ 2 + 2 * (m + 2) + 2) * ((m + 1) ^ 2 + 1) := by",
+        "  intro m",
+        "  ring",
+        "intro m",
+        "rw [key m]",
+        "apply Nat.not_prime_mul <;> nlinarith [sq_nonneg m, pow_pos (Nat.succ_pos m) 2]"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/nat_r_sophie_germain_composite.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "Sophie Germain factorisation: (m+2)^4+4 = (a^2+2a+2)((a-1)^2+1) with a=m+2.",
+      "difficulty": 4,
+      "novelty": "novel",
+      "contamination_risk": "medium",
+      "mathlib_match": "none",
+      "audit_notes": "Sophie Germain identity specialised to shifted naturals; no Mathlib lemma states compositeness of n^4+4. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_nat_r_mod_seven_pow",
+      "theorem": "∀ n : ℕ, 7 ∣ 3 ^ (2 * n + 1) + 2 ^ (n + 2)",
+      "family": "nat",
+      "insight": true,
+      "reference_proof": [
+        "have key : ∀ n : ℕ, 3 ^ (2 * n + 1) + 2 ^ (n + 2) = 3 * 9 ^ n + 4 * 2 ^ n := by",
+        "  intro n",
+        "  rw [pow_succ, pow_mul, pow_add]",
+        "  norm_num",
+        "  ring",
+        "intro n",
+        "have h : 9 ^ n % 7 = 2 ^ n % 7 := by",
+        "  rw [Nat.pow_mod]",
+        "rw [key n]",
+        "omega"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/nat_r_mod_seven_pow.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "Rewrite the sum as 3*9^n+4*2^n so that 9 ≡ 2 mod 7 gives divisibility.",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Original exponent pattern 3^(2n+1)+2^(n+2); needs the 9^n/2^n congruence reduction, no direct Mathlib lemma. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_nat_r_fifth_power_mod30",
+      "theorem": "∀ n : ℕ, 30 ∣ n ^ 5 + 29 * n",
+      "family": "nat",
+      "insight": true,
+      "reference_proof": [
+        "have key : ∀ n : ℕ, (n ^ 5 + 29 * n) % 30 = ((n % 30) ^ 5 + 29 * (n % 30)) % 30 := by",
+        "  intro n",
+        "  simp [Nat.add_mod, Nat.pow_mod, Nat.mul_mod]",
+        "intro n",
+        "have h : n % 30 < 30 := Nat.mod_lt _ (by norm_num)",
+        "apply Nat.dvd_of_mod_eq_zero",
+        "rw [key n]",
+        "generalize n % 30 = r at h ⊢",
+        "interval_cases r <;> norm_num"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/nat_r_fifth_power_mod30.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "Reduce n^5+29n modulo 30 to residue r = n % 30 so a finite case check applies.",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Fermat-style n^5 ≡ n mod 30 phrased without subtraction; not in Mathlib as stated. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_nat_r_sq_lt_two_pow",
+      "theorem": "∀ n : ℕ, 5 ≤ n → n ^ 2 < 2 ^ n",
+      "family": "nat",
+      "insight": true,
+      "reference_proof": [
+        "have key : ∀ m : ℕ, 5 ≤ m → 2 * m + 1 < m ^ 2 := by",
+        "  intro m hm",
+        "  nlinarith",
+        "intro n hn",
+        "induction n, hn using Nat.le_induction with",
+        "| base => norm_num",
+        "| succ m hm ih =>",
+        "  have h := key m hm",
+        "  rw [pow_succ 2 m]",
+        "  nlinarith"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/nat_r_sq_lt_two_pow.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "Auxiliary inequality 2m+1 < m^2 for m ≥ 5 that drives the induction step.",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "n^2 < 2^n for n ≥ 5 with a custom Nat.le_induction; Mathlib has no such lemma under this form. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_nat_r_sq_sum_three_dvd",
+      "theorem": "∀ a b : ℕ, 3 ∣ a ^ 2 + b ^ 2 → 3 ∣ a ∧ 3 ∣ b",
+      "family": "nat",
+      "insight": true,
+      "reference_proof": [
+        "have key : ∀ x : ℕ, (x ^ 2 % 3 = 0 ∧ x % 3 = 0) ∨ x ^ 2 % 3 = 1 := by",
+        "  intro x",
+        "  have h : x % 3 < 3 := Nat.mod_lt _ (by norm_num)",
+        "  have e : x ^ 2 % 3 = (x % 3) ^ 2 % 3 := by rw [Nat.pow_mod]",
+        "  interval_cases hx : x % 3 <;> simp_all",
+        "intro a b h",
+        "rcases key a with ⟨h1, h2⟩ | h1 <;> rcases key b with ⟨h3, h4⟩ | h3 <;> omega"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/nat_r_sq_sum_three_dvd.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "Every square is either 0 mod 3 with 3 ∣ x, or 1 mod 3.",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Classical a^2+b^2 divisible by 3 forces both divisible; not in Mathlib in this form. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_logic_r_dependent_choice",
+      "theorem": "∀ R : ℕ → ℕ → Prop, (∀ n, ∃ m, R n m) → ∀ a : ℕ, ∃ f : ℕ → ℕ, f 0 = a ∧ ∀ k, R (f k) (f (k + 1))",
+      "family": "logic",
+      "insight": true,
+      "reference_proof": [
+        "intro R h a",
+        "have key : ∃ g : ℕ → ℕ, ∀ n, R n (g n) := ⟨fun n => (h n).choose, fun n => (h n).choose_spec⟩",
+        "obtain ⟨g, hg⟩ := key",
+        "refine ⟨fun k => g^[k] a, rfl, fun k => ?_⟩",
+        "simp only [Function.iterate_succ_apply']",
+        "exact hg _"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/logic_r_dependent_choice.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "Choice function g with R n (g n) for all n, then iterate it from a.",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "medium",
+      "mathlib_match": "variant",
+      "audit_notes": "Dependent choice for a total relation on N via Function.iterate; authored variant, not an exact Mathlib lemma. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_algebra_r_sq_hom_comm",
+      "theorem": "∀ (G : Type) [Group G], (∀ a b : G, (a * b) ^ 2 = a ^ 2 * b ^ 2) → ∀ a b : G, a * b = b * a",
+      "family": "algebra",
+      "insight": true,
+      "reference_proof": [
+        "intro G _ h a b",
+        "have key : a * (b * a) * b = a * (a * b) * b := by",
+        "  have h1 := h a b",
+        "  simp only [sq, mul_assoc] at h1 ⊢",
+        "  exact h1",
+        "have := mul_left_cancel (mul_right_cancel key)",
+        "exact this.symm"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/algebra_r_sq_hom_comm.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "a*(b*a)*b = a*(a*b)*b obtained from (ab)^2 = a^2 b^2, then cancel on both sides.",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Groups with (ab)^2=a^2b^2 are abelian; no matching Mathlib lemma found by grep. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_algebra_r_cube_id_six",
+      "theorem": "∀ (R : Type) [Ring R], (∀ x : R, x ^ 3 = x) → ∀ x : R, 6 * x = 0",
+      "family": "algebra",
+      "insight": true,
+      "reference_proof": [
+        "intro R _ h x",
+        "have key : 3 * x ^ 2 + 3 * x = 0 := by",
+        "  have h1 := h (x + 1)",
+        "  have e : (x + 1) ^ 3 = x ^ 3 + 3 * x ^ 2 + 3 * x + 1 := by noncomm_ring",
+        "  rw [e, h x] at h1",
+        "  have h3 := sub_eq_zero.mpr h1",
+        "  rw [← h3]",
+        "  noncomm_ring",
+        "have key2 : 3 * x - 3 * x ^ 2 = 0 := by",
+        "  have h1 := h (x - 1)",
+        "  have e : (x - 1) ^ 3 = x ^ 3 - 3 * x ^ 2 + 3 * x - 1 := by noncomm_ring",
+        "  rw [e, h x] at h1",
+        "  have h3 := sub_eq_zero.mpr h1",
+        "  rw [← h3]",
+        "  noncomm_ring",
+        "have e6 : (6 : R) * x = (3 * x ^ 2 + 3 * x) + (3 * x - 3 * x ^ 2) := by noncomm_ring",
+        "rw [e6, key, key2, add_zero]"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/algebra_r_cube_id_six.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "Expanding (x+1)^3 = x+1 with x^3=x gives 3x^2+3x = 0 (and symmetrically for x-1).",
+      "difficulty": 4,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "Rings with x^3=x have characteristic dividing 6; authored, no Mathlib lemma. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_set_r_image_inter_injective",
+      "theorem": "∀ (α β : Type) (f : α → β), (∀ A B : Set α, f '' (A ∩ B) = f '' A ∩ f '' B) → Function.Injective f",
+      "family": "set",
+      "insight": true,
+      "reference_proof": [
+        "intro α β f h x y hxy",
+        "have key : f x ∈ f '' ({x} ∩ {y}) := by",
+        "  rw [h]",
+        "  exact ⟨⟨x, rfl, rfl⟩, ⟨y, rfl, hxy.symm⟩⟩",
+        "obtain ⟨z, ⟨hz1, hz2⟩, _⟩ := key",
+        "rw [← hz1, ← hz2]"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/set_r_image_inter_injective.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "f x lies in f  ({x} ∩ {y}) using the hypothesis with singletons.",
+      "difficulty": 3,
+      "novelty": "novel",
+      "contamination_risk": "medium",
+      "mathlib_match": "variant",
+      "audit_notes": "Converse of Set.image_inter (image preserving intersections implies injective); Mathlib has only the forward direction. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
+      "bench_split": "dev"
+    },
+    {
+      "name": "lean_custom_r_fibpair_coprime",
+      "theorem": "∀ n : ℕ, IsCoprime (pr n).1 (pr n).2",
+      "family": "custom",
+      "insight": true,
+      "reference_proof": [
+        "have key : ∀ m : ℕ, (pr m).2 ^ 2 - (pr m).2 * (pr m).1 - (pr m).1 ^ 2 = (-1) ^ m := by",
+        "  intro m",
+        "  induction m with",
+        "  | zero => simp [pr]",
+        "  | succ k ih =>",
+        "    simp only [pr, pow_succ]",
+        "    linear_combination (-1 : ℤ) * ih",
+        "intro n",
+        "refine ⟨-(-1) ^ n * (pr n).1, (-1) ^ n * ((pr n).2 - (pr n).1), ?_⟩",
+        "have e : ((-1 : ℤ) ^ n) * (-1) ^ n = 1 := by rw [← mul_pow]; norm_num",
+        "linear_combination ((-1 : ℤ) ^ n) * key n + e"
+      ],
+      "budget_nodes": 45,
+      "lean_file": "lean/custom_r_fibpair_coprime.lean",
+      "source": "mathlib",
+      "verified": true,
+      "auxiliary": "Cassini-type identity b^2 - b*a - a^2 = (-1)^m for the Fibonacci pair, giving a Bezout witness.",
+      "difficulty": 4,
+      "novelty": "novel",
+      "contamination_risk": "low",
+      "mathlib_match": "none",
+      "audit_notes": "User-defined Fibonacci pair over Z; coprimality via Bezout from a strengthened identity. Single-tactic attempts (omega / induction<;>omega / nlinarith [sq_nonneg _] / simp_all) fail or time out.",
       "bench_split": "dev"
     }
   ]
