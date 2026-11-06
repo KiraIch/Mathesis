@@ -220,7 +220,7 @@ ICML 2027（約 2027 年 1 月底截稿）不建議當主投。
 | 週 | 日期 | 工作 | 產出 | 門檻 |
 |---|---|---|---|---|
 | **W1** | 11/03–11/09 | 本文件更新；gated 測試重跑；miniF2F 經你同意後下載、port 到 v4.35、子集 pass@8；hint-gap 試測（`lean_pilot` 25 題已完成；`lean_hard` 40 目標已完成，mean gap +0.075，見 §11.1） | 測試結果、G0 子集數字、hint-gap 初步分布 | **G0**：子集可正常執行，CoT 有效證明率可接受（若太低，改換證明器，重算時程） |
-| **W2–3** | 11/10–11/23 | benchmark v1：擴到 80–100 題；hint-gap（k=8，原版與提示版）；routine 配對；LLM 標註與作者盲標 20 題 | `benchmark/v1/`、標註檔、一致性報告 | **G1**（11/23）：insight ≥40 題、routine 配對 ≥25 對（門檻為初步設定，若 Gap 分布不足就調整並記錄在 §11） |
+| **W2–3** | 11/10–11/23 | benchmark v1：擴到 80–100 題；hint-gap（k=8，原版與提示版）；routine 配對；LLM 標註與作者盲標 20 題 | `benchmark/v1/`、標註檔、一致性報告 | **G1**（11/23）：insight ≥40 題、routine 配對 ≥25 對（門檻為初步設定，若 Gap 分布不足就調整並記錄在 §11）。**結果（2026-11-06）：未達成，見 §11 的 G1 判定與路線決定** |
 | **W4–5** | 11/24–12/07 | Mathesis v1（衝刺版）：LLM 提案的 AddSubgoal、AddSymbol；型別與 elaboration 過濾；impasse 特徵在 calibration 上校準；接 RandomCandidateSelector；實作 B0、B1、B2、B4；只跑 calibration 與 dev | dev 結果、校準報告 | **G2**（12/07）：dev 上 Mathesis 對 B1／B2 有可見差距。若沒有，H1 轉為負面結果路線 |
 | **W6** | 12/08–12/14 | 凍結算子庫、特徵、門檻、split、預算；撰寫並提交 OSF 預註冊（H1、H2） | 預註冊連結 | 預註冊完成，之後不改 |
 | **W7** | 12/15–12/21 | test 只跑一次（compute-matched）；bootstrap CI；mixed-effects 分析 | 主表 | **G3**（12/21）：H1 判定 |
@@ -394,6 +394,14 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 | `20261103T154014Z_hint-gap` | `lean_hard` 40 個目標 | 40 | — | — | 完成（640 列，judge v1），**作者決定（2026-11-04）：只作探索性數據**，不作為 H1 的正式證據。mean gap（hint − plain 的 pass@1）+0.075，兩層 bootstrap 95% CI [0.016, 0.147]；40 題中 29 題兩條件都在天花板或地板，非零 gap 10 題，超過雜訊 p90（0.125，來自與 `122531Z` plain 的差異）只有 5 題（`real_lucas_five` +0.875、`real_geom_mean_two` +0.750、`logic_drinker_implication` +0.500、`custom_fib2_bound` +0.250、`nat_sum_even` +0.250）。敏感度：排除 `real_exp_linear` 與係數錯誤題後 +0.076 [0.013, 0.155]；再排除所有 2026-11-04 audit 標記題後 +0.090 [0.016, 0.180]（n=32）；2026-11-04 審查判定 auxiliary 寫成策略文字（而非 have 陳述）的 9 題，兩條件全在天花板（3 題）或地板（6 題），gap 皆為 0，無法判斷策略文字 hint 的效果；其餘 31 題 +0.097 [0.020, 0.190]。各子集的非零 gap 只有 0–10 題，樣本不足以比較子集間差異。分析檔 `runs/analysis/hint_gap_report_20261103T154014Z_hint-gap.json`。注意：此 run 送出的 `lean_ineq_cube_sum_zero_sixth` hint 寫 `4*((x-y)(2x+y)(x+2y))^2`，代數上應為 `2*`（x=1, y=0 時兩側皆為 8）；`problems.json` 已於 2026-11-04 修正，但此 run 用的是錯誤係數。部分 hint 含策略性內容（`reference_proof` 中的代數提示），正式數據需另以預先登記的題目與切分重跑 |
 
 **insight 題的判定規則（2026-11-06 作者決定，於新題 15 題 shard3 結果出來之前先定）**：維持以 Gap 定義 insight，G1 的「≥40 題」改為實際可得題數，不再硬湊 40。每題以 `scripts/hint_significance.py` 判定：k=32，兩條件的 Fisher 精確檢定雙尾 p<0.05，且 hint 成功率高於 plain，才算「hint 有效」。多重比較用 Holm：**主要分析**的家族只含有資訊的題（非 plain 天花板，且兩條件合計至少 1 次成功），**敏感度分析**的家族為所有非天花板題。以 `20261104T131752Z_hint-gap-merged`（23 題）為例：有資訊的 11 題；未校正 p<0.05 共 3 題（`logic_drinker_implication`、`nat_sum_even`、`ineq_sq_sum_abc_four`）；主要 Holm 後 2 題通過（`drinker_implication` p_holm<0.0001、`sq_sum_abc_four` p_holm=0.0475，只略低於 0.05）；敏感度 Holm 後只有 `drinker_implication` 通過。**G1 的 ≥40 題目標在現有題組下不可達**。新題 15 題合併後（38 題、家族 18 題）：未校正 p<0.05 的 hint 有效題 3 題，通過 Holm 的只有 1 題（`logic_drinker_implication`），詳見下表最後一列。G1 門檻需重新決定。
+
+**G1 判定與路線決定（2026-11-06，作者選 A「接受負面結果」）**：
+- **G1 未達成**：以預先登記的規則（k=32、Fisher p<0.05、Holm 校正），38 題中只有 1 題（`logic_drinker_implication`）顯示 hint 有穩定效果，遠低於 ≥40。
+- **被證偽的是 G1 的前提，不是 H1**：這個證據顯示，對 DeepSeek-Prover-V2-7B、以「`reference_proof` 的第一個 `have`」當 hint，無法用 Gap 圈出足夠的 insight 題。H1（Mathesis 對 B1/B2）尚未檢驗，Mathesis 也還沒實作。
+- **路線**：依 §0 保底與 §4 的 D&B 路線，以 benchmark、hint-gap 方法與負面結果為主軸。論文不得宣稱「hint 無效」一般化到其他證明器或其他 hint 形式，只能陳述：在此證明器、此 hint 規則、此題組下沒有可偵測的效果。
+- **W4–5 決定（2026-11-06，作者選「停止系統開發，寫 benchmark 與負面結果」）**：不實作 Mathesis v1、B1、B2、B4；§5.1、§5.2 與 W4–5 的系統工作暫停（保留設計文件，不刪）。H1 不檢驗，改以「hint-gap 方法 + `lean_hard` 資料集 + 負面結果」為論文主軸（§4 保底路線）。
+- **新工作順序**：(1) 資料集釋出整理：題目、datasheet、split、`retired` 欄位與版本標記、污染審計結果；(2) 統計報告腳本：B0 多 seed 的 pass@1/pass@8 與信賴區間、依家族與 insight 標籤分層、噪音下限；(3) 一鍵重現流程（單一指令從 Lean 驗證到 summary，含 manifest）；(4) 負面結果章節：k=32 hint-gap 全部數據、效力分析（對 ±0.1 效應的檢定力）、hint 規則敏感度；(5) Related Work 定稿（D 工作流，ProofEvolve、HAGeo）。
+- **誠實限制**：hint-gap 的 B0 與 hint 都來自同一個 7B 模型；k=32 對小效應（約 ±0.1）的檢定力不足；hint 規則（第一個 `have`）是一種選擇，`real_lucas_five` 在 k=8 的 +0.875 會隨 hint 選法變成 0，顯示 Gap 對 hint 選擇敏感，所以不能把本次結果解讀為「構造性提示沒有幫助」。
 
 **已知問題**：
 
