@@ -1,6 +1,6 @@
 # License
 
-Copyright: 待作者補充（著作權人）, 待作者補充（年份）
+Copyright (c) 2026 ChiaAn Lin, Master Program for Health and Intelligent Medicine
 
 The `lean_hard` dataset in this directory (`problems.json`, `hints/`, the dataset documentation `docs/datasheet-lean_hard.md`, and the theorem-statement and reference-proof files under `lean/`) is licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0).
 

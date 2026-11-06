@@ -18,7 +18,7 @@
 
 本文的動機來自自己的量測，而非既有文獻的論斷。在無提示、k=8 的設定下，同一證明器（DeepSeek-Prover-V2-7B）的兩個 seed 之間，逐題 pass@1 差距在原 89 題中最大為 0.25，在含新增題的啟用 92 題中最大為 0.625（`lean_nat_r_mod_seven_pow`，seed 0 為 7/8，seed 1 為 2/8；b0-json `noise_floor`；neg §4）。在這組數據下，單一 seed 的逐題比較無法把抽樣噪音與真實差異分開。
 
-本文以「提示差距」（hint-gap）作為案例檢驗此問題。提示差距是提示版的成功率減去原版的成功率；提示版在題目前加入參考證明的第一個 `have` 陳述，只給陳述、不給證明（datasheet §1）。在 k=8 時，`lean_real_geom_mean_two` 的 gap 為 +0.625；改為 k=32 後為 +0.125（p = 0.450；neg §4）。需注意此題是 k=8 結果中 gap 第二大的題（`074803Z` 的 37 題中，gap ≥ 0.375 的只有 `lean_logic_drinker_implication` +0.875、本題 +0.625、`lean_nat_sum_even` +0.375；plan §11.1），事後挑選最大者本來就會因向平均值回歸而在更大樣本時縮小，因此這個縮小只能部分歸因於抽樣噪音，不能當作噪音大小的量測；噪音大小以上述 B0 兩個 seed 的逐題差距為準。在 38 題、k=32 的量測中，經 Holm 校正後只有 1 題通過（sig-json `summary`；neg §3）。判定以 Lean 4 與 Mathlib 進行。[待補引用：Lean 4 與 Mathlib 的標準引用]
+本文以「提示差距」（hint-gap）作為案例檢驗此問題。提示差距是提示版的成功率減去原版的成功率；提示版在題目前加入參考證明的第一個 `have` 陳述，只給陳述、不給證明（datasheet §1）。在 k=8 時，`lean_real_geom_mean_two` 的 gap 為 +0.625；改為 k=32 後為 +0.125（p = 0.450；neg §4）。需注意此題是 k=8 結果中 gap 第二大的題（`074803Z` 的 37 題中，gap ≥ 0.375 的只有 `lean_logic_drinker_implication` +0.875、本題 +0.625、`lean_nat_sum_even` +0.375；plan §11.1），事後挑選最大者本來就會因向平均值回歸而在更大樣本時縮小，因此這個縮小只能部分歸因於抽樣噪音，不能當作噪音大小的量測；噪音大小以上述 B0 兩個 seed 的逐題差距為準。在 38 題、k=32 的量測中，經 Holm 校正後只有 1 題通過（sig-json `summary`；neg §3）。判定以 Lean 4 與 Mathlib 進行。[de Moura 與 Ullrich 2021, doi:10.1007/978-3-030-79876-5_37；The mathlib Community 2020, doi:10.1145/3372885.3373824]
 
 關於既有論文如何報告成功率，我們只檢查了第 2 節引用的 9 篇（`docs/related-work-notes-C.md`，以關鍵字搜尋全文，結果不外推到其他文獻）。其中 3 篇報告了某種形式的變異：ProofEvolve [Ye 等 2026, arXiv:2608.26334] 報告三次獨立執行的平均並附誤差線；NanoProof [Kripner 與 Straka 2026, arXiv:2610.11605] 報告三次獨立的 RL 訓練並附 min/max 範圍；DeepSeek-Prover-V2 [Ren 等 2025, arXiv:2504.21801] 在表中以 μ ± σ 報告平均與標準差，但全文搜尋未見其執行次數。另 6 篇（HAGeo、AMBER、DeepInsight、DSP、LEGO-Prover、Goedel-Prover-V2）在全文以關鍵字搜尋沒有找到獨立執行、標準差定義、信賴區間或誤差線的敘述；Goedel-Prover-V2 的表中有 ± 但文中未定義。這是關鍵字搜尋的結果，不表示這些論文沒有做。此外，上述報告的變異是整體流程或訓練的變異，本文所量的是同一證明器、同一題目在不同 seed 下的逐題差距，兩者不同，我們沒有檢查這 9 篇是否也量過後者。
 
@@ -152,7 +152,7 @@ Lean 子行程以 `lake env lean <candidate.lean>` 執行，工作目錄為 `lea
 
 **設定。** B0 為無提示的基線，k=8，使用兩個 seed，主要分析為啟用的 92 題（b0-json；plan §11.1）。seed 0 由 `20261103T122531Z_b0`（舊 89 題）與 `20261104T141934Z_b0-merged`（新 20 題）組成；seed 1 由 `20261104T054619Z_b0-merged` 與 `20261104T150345Z_b0-merged` 組成（neg §8）。`b0-json` 未記錄這個對應所用的 `--seed-runs` 參數；本文的對應由題數與題目集合推得，尚待作者確認（neg §9 第 3 項）。
 
-**結果。** 下表數字取自 `b0-json`，四捨五入至小數點後三位；原始值見該檔。pass@1 的 95% 信賴區間以題目重抽樣的 bootstrap 計算，10,000 次重抽樣，seed 為 0（b0-json `bootstrap`；[待補引用：bootstrap 方法]）。pass@k 的定義與估計量 `[待補引用：pass@k 的定義與估計量]`。
+**結果。** 下表數字取自 `b0-json`，四捨五入至小數點後三位；原始值見該檔。pass@1 的 95% 信賴區間以題目重抽樣的 bootstrap 計算，10,000 次重抽樣，seed 為 0（b0-json `bootstrap`；bootstrap 方法見 [Efron 1979, doi:10.1214/aos/1176344552]）。本文的 pass@k 指每題 k 個樣本中至少有 1 個通過；當樣本數 n 等於 k 時，與 [Chen 等 2021, arXiv:2107.03374] 的 pass@k 估計量相同。
 
 | 指標 | seed 0 | seed 1 |
 |---|---|---|
@@ -191,10 +191,10 @@ Gap_B(p) = Pr[solve p | B, 提示版] − Pr[solve p | B, 原版]
 判定規則（neg §1，`scripts/hint_significance.py`）如下。
 
 - 每題每條件取樣 k=32 次，成功率為成功次數 c/32。
-- 每題以雙尾 Fisher 精確檢定比較 2×2 表（`[待補引用：Fisher 精確檢定]`），α = 0.05。
+- 每題以雙尾 Fisher 精確檢定比較 2×2 表（[Fisher 1922, doi:10.2307/2340521]），α = 0.05。
 - **hint 有效**：p < 0.05 且 gap > 0；**hint 有害**：p < 0.05 且 gap < 0。
 - **天花板**：plain 成功次數為 32 的題，不檢定。
-- **多重比較**：以 Holm step-down 校正（`[待補引用：Holm 校正]`）。主要分析的家族為「有資訊」的題，即非天花板且兩條件合計至少 1 次成功；敏感度分析的家族為所有非天花板的已檢定題。
+- **多重比較**：以 Holm step-down 校正（Holm 1979，Scandinavian Journal of Statistics；`[待作者核對：書目細節，Crossref 查無，需人工確認後補入參考文獻]`）。主要分析的家族為「有資訊」的題，即非天花板且兩條件合計至少 1 次成功；敏感度分析的家族為所有非天花板的已檢定題。
 
 **規則的時間點。** 規則記載於 `docs/paper-plan.md` §11，日期為 2026-11-06。定規則時，舊 23 題的 k=32 結果已經看過，新 15 題中也已看過 12 題（shard0、shard1、shard2）；只有 shard3 的 3 題（`real_r_nested_diff`、`nat_r_sophie_germain_composite`、`algebra_r_sq_hom_comm`）是在規則之後才出現（neg §1）。**本文不主張預先登記。** 規則應稱為事後確定的分析規則。
 
@@ -364,14 +364,25 @@ python3 scripts/replay_verify.py --benchmark benchmark/lean_hard --verify-worker
 
 - **資料集授權。** `lean_hard` 的資料集（`problems.json`、`hints/`、說明文件，以及 `lean/` 下的題目與證明檔）採 CC BY 4.0（`benchmark/lean_hard/LICENSE.md`；datasheet §8）。
 - **第三方授權。** Mathlib 為 Apache-2.0，依其原授權，不在本資料集的授權範圍（datasheet §8）。
-- **著作權人與年份。** `[待作者補充：著作權人與年份，LICENSE.md 中為待補欄位]`
-- **引用格式與 DOI。** `[待作者補充]`
-- **作者與單位。** 文件記載的作者為 ChiaAn Lin（datasheet §8）。所屬單位 `[待作者補充]`（plan §10 第 4 項，尚未決定）。
+- **著作權人與年份。** ChiaAn Lin，2026（`benchmark/lean_hard/LICENSE.md`）。
+- **引用格式與 DOI。** 釋出時由存放平台（例如 Zenodo）配發 DOI；`[待釋出後填入 DOI 與引用格式]`。
+- **作者與單位。** 文件記載的作者為 ChiaAn Lin（datasheet §8）。所屬單位為 Master Program for Health and Intelligent Medicine（作者 2026-11-06 提供）。
 - **LLM 參與。** 題目的 `insight`、`difficulty` 等欄位含 LLM 輔助標註；標註的 prompt、回應與審核紀錄 `[待作者補充：存放位置]`（datasheet §4.4、§9 第 6 項）。
 - **個人資料與敏感內容。** `[待作者補充：是否有個資或敏感內容的檢查紀錄；材料中未記載]`
 - **使用限制。** 不應以本資料集的 pass@1 宣稱超越 SOTA，不應把 hint-gap 結果推廣為一般結論（datasheet §6.2）。
 
 <!-- 來源: docs/datasheet-lean_hard.md (§4.4, §8, §9), benchmark/lean_hard/LICENSE.md, docs/paper-plan.md (§10, §11 已知問題) -->
+
+## 參考文獻（標準方法與工具）
+
+以下書目已用 Crossref 或 arXiv API 核對題名、作者與年份。第 2 節的 9 篇見該節的 arXiv 編號。
+
+- de Moura, L., Ullrich, S. 2021. The Lean 4 Theorem Prover and Programming Language. Lecture Notes in Computer Science. doi:10.1007/978-3-030-79876-5_37
+- The mathlib Community. 2020. The Lean Mathematical Library. Proceedings of the 9th ACM SIGPLAN International Conference (CPP 2020). doi:10.1145/3372885.3373824
+- Efron, B. 1979. Bootstrap Methods: Another Look at the Jackknife. The Annals of Statistics. doi:10.1214/aos/1176344552
+- Fisher, R. A. 1922. On the Interpretation of χ² from Contingency Tables, and the Calculation of P. Journal of the Royal Statistical Society. doi:10.2307/2340521
+- Chen, M. 等 2021. Evaluating Large Language Models Trained on Code. arXiv:2107.03374
+- Holm, S. 1979. A simple sequentially rejective multiple test procedure. Scandinavian Journal of Statistics. `[待作者核對：卷期頁與連結；Crossref 查無]`
 
 ## 附錄
 

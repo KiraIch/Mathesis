@@ -314,7 +314,7 @@ PYTHONPATH=src python3 -m mathesis.cli b0 --benchmark benchmark/lean_hard --k 8 
 
 下列事項在文件或程式碼中找不到，或文件內容不一致，本檔不做推測：
 
-1. **著作權人與年份**（`benchmark/lean_hard/LICENSE.md` 中的待補欄位）。
+1. **著作權人與年份**：已填，ChiaAn Lin，2026，單位 Master Program for Health and Intelligent Medicine（2026-11-06 作者提供；`benchmark/lean_hard/LICENSE.md`）。DOI 待釋出時由存放平台配發。
 2. **引用格式**與 DOI；是否有預印本或版本 DOI。
 3. **版本號**（資料集本身的版本，與 Lean 或 Mathlib 版本無關）。
 4. **聯絡方式**。
