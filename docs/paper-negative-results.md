@@ -159,6 +159,8 @@ B0 的 seed 比較見 `runs/analysis/b0_report_k8_2seeds.json`。下表的第一
 | B0，k=8，seed 0 | `20261103T122531Z_b0`、`20261104T141934Z_b0-merged` |
 | B0，k=8，seed 1 | `20261104T054619Z_b0-merged`、`20261104T150345Z_b0-merged` |
 
+**判定的可重現性（2026-11-06）**：以 `scripts/replay_verify.py` 在同一台機器（Lean v4.35.0、同一版 Mathlib、judge v2、`unshare -rn` 沙箱）對下列三個 run 全量重新驗證其儲存的回應，樣本的 `passed` 與 `failure_class` 全部與儲存值一致：`20261104T054619Z_b0-merged` 712/712、`20261104T131752Z_hint-gap-merged` 1472/1472、`20261106T061711Z_hint-gap-merged` 960/960，共 3144 個樣本，0 個不一致（`runs/analysis/replay_*.json`）。**範圍限制**：這證明的是「給定儲存的回應，判定可重現」，不是生成本身可重現；生成的可重現性另以 4 張 GPU 重新生成同一種子的回應逐位元相同（16/16）驗證。只在單一機器與單一 Lean／Mathlib 版本上驗證，未跨機器。
+
 **分析檔**（`runs/analysis/`）
 
 - `significance_k32_combined.json`：主要分析，38 題。
