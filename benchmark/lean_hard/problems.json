@@ -1801,7 +1801,8 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "variant",
-      "audit_notes": "Bound of pairwise product sum by the squared mean for three nonnegative reals, using the three square hints; classic exercise, no direct Mathlib statement. [2026-11-04 audit] Algebraically equivalent to lean_ineq_pairwise_sum_le (nonnegativity hypotheses unused); duplicate, exclude in sensitivity analysis and drop at benchmark freeze."
+      "audit_notes": "Bound of pairwise product sum by the squared mean for three nonnegative reals, using the three square hints; classic exercise, no direct Mathlib statement. [2026-11-04 audit] Algebraically equivalent to lean_ineq_pairwise_sum_le (nonnegativity hypotheses unused); duplicate, exclude in sensitivity analysis and drop at benchmark freeze.",
+      "retired": "2026-11-06: near-duplicate of another problem (see audit_notes 2026-11-04 audit); kept for B0 comparability, excluded from the active set and from hint-gap targets"
     },
     {
       "name": "lean_ineq_sq_shift_quarter",
@@ -1864,7 +1865,8 @@
       "bench_split": "dev",
       "contamination_risk": "medium",
       "mathlib_match": "variant",
-      "audit_notes": "Square-root AM-GM against 1, proved from (sqrt x - 1)^2 >= 0 and sqrt x squared equals x; related to Mathlib's AM-GM lemmas but not a direct instance. [2026-11-04 audit] Special case b=1 of lean_real_geom_mean_two; near-duplicate."
+      "audit_notes": "Square-root AM-GM against 1, proved from (sqrt x - 1)^2 >= 0 and sqrt x squared equals x; related to Mathlib's AM-GM lemmas but not a direct instance. [2026-11-04 audit] Special case b=1 of lean_real_geom_mean_two; near-duplicate.",
+      "retired": "2026-11-06: near-duplicate of another problem (see audit_notes 2026-11-04 audit); kept for B0 comparability, excluded from the active set and from hint-gap targets"
     },
     {
       "name": "lean_real_cube_ge_double_sq",
@@ -1992,7 +1994,8 @@
       "contamination_risk": "low",
       "mathlib_match": "none",
       "audit_notes": "Authored shifted odd-number sum (2i+3); closed form n^2+2n is not a Mathlib statement in this shape. [2026-11-04 audit] Index shift of lean_nat_odd_sum (sum (2i+3) = (n+1)^2 - 1); near-duplicate.",
-      "bench_split": "dev"
+      "bench_split": "dev",
+      "retired": "2026-11-06: near-duplicate of another problem (see audit_notes 2026-11-04 audit); kept for B0 comparability, excluded from the active set and from hint-gap targets"
     },
     {
       "name": "lean_nat_pow9_plus7_div8",

@@ -29,7 +29,7 @@ Gap_B(p) = Pr[solve p | B, 提示版] - Pr[solve p | B, 原版]
 
 專案根目錄沒有 `lean-toolchain` 檔。
 
-**版本說明。** `docs/paper-plan.md` §5.3 寫的候選池是 89 題（工作樹），這是 2026-11-04 汰換之前的數字。本檔的數字以目前的 `problems.json`（109 筆，其中 95 筆啟用）為準。
+**版本說明。** `docs/paper-plan.md` §5.3 寫的候選池是 89 題（工作樹），這是 2026-11-04 汰換之前的數字。本檔的數字以目前的 `problems.json`（109 筆，其中 92 筆啟用、17 筆退役）為準。
 
 ---
 
@@ -42,21 +42,21 @@ Gap_B(p) = Pr[solve p | B, 提示版] - Pr[solve p | B, 原版]
 | 項目 | 題數 |
 |---|---|
 | 總題數（`problems.json`） | 109 |
-| 啟用題數（無 `retired` 欄位） | 95 |
-| 已退役題數（有 `retired` 欄位） | 14 |
+| 啟用題數（無 `retired` 欄位） | 92 |
+| 已退役題數（有 `retired` 欄位） | 17 |
 | insight 題（啟用） | 46 |
-| routine 題（啟用） | 49 |
+| routine 題（啟用） | 46 |
 | insight 題（總計，含退役） | 60（其中退役 14） |
 
-退役題全部是 insight 題。
+退役 17 題中，14 題為 insight（2026-11-04 汰換），3 題為 routine（2026-11-06，近似重複）。
 
 ### 2.2 家族（`family`）
 
 | family | 總計 | 啟用 | 退役 |
 |---|---|---|---|
-| ineq | 27 | 21 | 6 |
-| real | 23 | 20 | 3 |
-| nat | 26 | 22 | 4 |
+| ineq | 27 | 20 | 7 |
+| real | 23 | 19 | 4 |
+| nat | 26 | 21 | 5 |
 | logic | 13 | 12 | 1 |
 | custom | 8 | 8 | 0 |
 | set | 6 | 6 | 0 |
@@ -66,14 +66,14 @@ Gap_B(p) = Pr[solve p | B, 提示版] - Pr[solve p | B, 原版]
 
 | 欄位 | 值：題數（總計 / 啟用） |
 |---|---|
-| `difficulty` | 1：9 / 9；2：37 / 32；3：43 / 37；4：18 / 15；5：2 / 2 |
-| `novelty` | novel：83 / 75；perturbed：10 / 5；textbook：16 / 15 |
-| `contamination_risk`（作者標註） | low：73 / 63；medium：26 / 23；high：10 / 9 |
-| `mathlib_match` | none：69 / 59；variant：37 / 33；exact：3 / 3 |
-| `source` | mathlib：98 / 84；core：11 / 11 |
-| `bench_split` | dev：109 / 95（全部為 dev） |
-| `budget_nodes` | 45：85 / 71；15：24 / 24 |
-| `verified` | true：109 / 95 |
+| `difficulty` | 1：9 / 9；2：37 / 29；3：43 / 37；4：18 / 15；5：2 / 2 |
+| `novelty` | novel：83 / 72；perturbed：10 / 5；textbook：16 / 15 |
+| `contamination_risk`（作者標註） | low：73 / 62；medium：26 / 21；high：10 / 9 |
+| `mathlib_match` | none：69 / 58；variant：37 / 31；exact：3 / 3 |
+| `source` | mathlib：98 / 81；core：11 / 11 |
+| `bench_split` | dev：109 / 92（全部為 dev） |
+| `budget_nodes` | 45：85 / 68；15：24 / 24 |
+| `verified` | true：109 / 92 |
 
 `exact` 的三題是 `lean_real_exp_linear`、`lean_set_diff_union`、`lean_set_inter_mono`。
 
@@ -160,13 +160,7 @@ Gap_B(p) = Pr[solve p | B, 提示版] - Pr[solve p | B, 原版]
 
 **4.3 禁用 token 規則。** B0 的判定規則把 `sorry`、`admit`、`axiom` 視為禁用 token，證明文字與 Lean 輸出都要檢查（`src/mathesis/llm_baseline.py` 模組說明）。這是判定候選證明的規則，不是題庫建構時的檢查；題庫本身的檢查只有第 4.2 節的兩項。
 
-**4.4 insight 與 routine 標註（§5.3 第 3、6 點；§11）。** 文件中有兩種說法，不一致：
-
-- §5.3 第 3 點寫「依 Gap 門檻分出 insight 題」。
-- §5.3 第 6 點寫標註內容是「每題是否需要非平凡輔助構造、難度 1–5、與 Mathlib 的相似度」，標註者為 LLM，並由作者盲標 20 題核對。
-- §11 的「insight 題的判定規則（2026-11-06 作者決定）」寫「維持以 Gap 定義 insight」。
-
-詳見第 5.2 節。
+**4.4 insight 與 routine 標註（§5.3 第 6 點；2026-11-06 作者決定）。** `insight` 是結構標註：表示該題的解法需要非顯然的輔助構造。標註內容依 §5.3 第 6 點包括「是否需要非平凡輔助構造、難度 1–5、與 Mathlib 的相似度」，標註者為 LLM，並由作者盲標 20 題核對（盲標結果未在本 checkout 中，見第 9 節）。hint-gap 的 Gap 不用來定義 insight。詳見第 5.2 節。
 
 **4.5 2026-11-04 audit（§5.3 第 1 點、`audit_notes`）。** §5.3 記錄：2026-11-04 的陳述審查發現 1 組代數等價重複與 2 題近似重複，已在 `audit_notes` 註記，「凍結題庫時移除」。目前 `audit_notes` 含 `[2026-11-04 audit]` 標記的條目共 11 筆。其中一筆是係數修正：`lean_ineq_cube_sum_zero_sixth` 的 auxiliary 係數由 4 改為 2（`audit_notes` 原文：「runs before this date used the wrong coefficient in the hint」）。
 
@@ -179,22 +173,24 @@ Gap_B(p) = Pr[solve p | B, 提示版] - Pr[solve p | B, 原版]
 
 **4.7 hint-gap 量測（§11 表格各列）。** 量測的 run 與分析結果列在 §11.1。本資料集不含 run 的原始輸出（見第 9 節）。
 
+**4.8 2026-11-06 標記退役（作者決定）。** 2026-11-04 的 audit 找出 1 組代數等價重複與 2 題近似重複（見 4.5）。作者決定將其中 3 題標記為 `retired`，檔案保留：`lean_ineq_three_pairs_mean`、`lean_nat_shifted_odd_sum`、`lean_real_sqrt_le_avg_one`。三題皆為 routine（`insight: false`）。啟用題數由 95 變為 92。
+
 ---
 
 ## 5. 資料狀態與已知問題
 
 ### 5.1 退役題為何保留
 
-退役的 14 題是 B0 的天花板題（16/16），保留在 `problems.json` 中，是為了讓 B0 在新舊版本之間可以比較（`retired` 欄位的文字，以及 §11 第 11 列）。
+退役的 17 題中，14 題是 B0 的天花板題（16/16，2026-11-04），3 題是近似重複題（2026-11-06，見 4.8）。全部保留在 `problems.json` 中，以便 B0 在新舊版本之間比較。
 
 - B0 的 loader（`load_b0_problems`）**不會跳過**退役題；`mathesis b0` 會跑全部 109 筆（若沒有用 `--problems` 限制）。
 - hint-gap 的目標（`llm_baseline.py` 約第 1074 行）與 hint 檔產生（`scripts/extract_hints.py`）會**跳過**退役題。
 
-因此使用者要留意：B0 的 pass@k 若沒有指定題目，會包含退役題，與只看 95 題的數字不同。
+因此使用者要留意：B0 的 pass@k 若沒有指定題目，會包含退役題，與只看 92 題的數字不同。
 
 ### 5.2 insight 標籤的依據
 
-**這份資料的 `insight` 欄位不是由 hint-gap 實測決定的。** 理由：
+**決定（2026-11-06，作者）：`insight` 是結構標註，不是 hint-gap 實測的結果。** `insight` 表示該題解法需要非顯然的輔助構造，由作者與 LLM 標註；hint-gap 的 Gap 是獨立量測，不用來定義 insight。以下是此決定下可檢查的結構對應，以及 hint-gap 實測的結果：
 
 1. 結構上的對應已檢查：`insight: true` 的 60 題全部 `auxiliary` 非空且 `reference_proof` 含 `have`；`insight: false` 的 49 題 `auxiliary` 全部為空。（3 題 routine 的 `reference_proof` 文字中含字串 `have`，本次未逐一確認是否為 tactic。）
 2. hint-gap 實測的結果不支持以它來解釋標籤。k=32 的合併分析（38 題，`runs/analysis/significance_k32_combined.json`）：
@@ -203,9 +199,9 @@ Gap_B(p) = Pr[solve p | B, 提示版] - Pr[solve p | B, 原版]
    - Holm 校正後通過：1 題（`lean_logic_drinker_implication`）；
    - hint 有害（未校正 p<0.05）：1 題（`lean_algebra_r_sq_hom_comm`）。
 
-因此**不得宣稱 insight 標籤與 hint 的效果相關**。
+因此 insight 標籤與 hint 的效果**沒有可偵測的關聯**，不得宣稱兩者相關。
 
-文件內的依據說法不一致（見第 4.4 節）。若作者要把 `insight` 描述為「需要非平凡輔助構造」的結構標註，需要的 LLM 標註輸出目錄 `benchmark/annotations/` 在目前的 checkout 中**不存在**（已檢查）；標註 prompt 與回應是否存在於其他位置，文件未說明（見第 9 節）。
+標註輸出：LLM 標註的原始輸出目錄 `benchmark/annotations/` 在目前的 checkout 中**不存在**（已檢查）。標註 prompt、回應與作者盲標的存放位置待作者補充（見第 9 節）。
 
 ### 5.3 污染風險
 
@@ -216,27 +212,29 @@ Gap_B(p) = Pr[solve p | B, 提示版] - Pr[solve p | B, 原版]
 
 主體短於 15 個字元的命中判為 generic，不算記憶證據。腳本自己的說明寫明：這是啟發式篩檢，不是污染的證明；沒有命中不代表題目未曾出現在訓練資料中。
 
-**結果。** 已存的最新審計輸出是 `runs/contamination/20261103T121925Z.json`：
+**結果。** 最新的審計輸出是 `runs/contamination/20261106T062924Z.json`（2026-11-06，method 為啟發式篩選）：
 
-- 掃描 8,624 個 Mathlib `.lean` 檔；檢查 89 題（即 `20261103T122531Z` 所用的題組，含之後退役的 14 題）；
-- 非 generic 的主體命中：0 題；
-- 名稱 stem 命中：10 題（共 19 個檔案命中）。這 10 題全部屬於原始 38 題版本（已與 `git show b582c58` 的 `problems.json` 比對）。
+- 掃描 8,624 個 Mathlib `.lean` 檔；檢查全部 109 題；
+- 新增的 20 題：名稱命中 0 題、內文命中 0 題；
+- 全部 109 題：名稱 stem 命中 10 題、內文非 generic 命中 0 題。
 
-**未覆蓋的範圍。** 2026-11-04 新增的 20 題**沒有出現在任何已存的審計輸出中**（已檢查 `runs/contamination/` 下的三個 JSON，都只涵蓋 89 或更少的題目）。§11 第 4 項寫「新題組 38/38 已檢查」，但對應的輸出檔在本 checkout 中找不到（見第 9 節）。
+名稱命中的 10 題與先前 `runs/contamination/20261103T121925Z.json`（89 題）的命中題目相同（已比對）；先前已確認這 10 題全部屬於原始 38 題版本（與 `git show b582c58` 的 `problems.json` 比對）。
+
+這是啟發式篩選，**不是污染的證明**；沒有命中不代表題目未曾出現在訓練資料中。
 
 `contamination_risk` 欄位是作者標註；§5.3 寫「我自己標的 contamination 等級比篩檢更保守」。
 
 ### 5.4 與 Mathlib 相似的題目
 
-`mathlib_match` 為 `variant` 的 33 題與 `exact` 的 3 題（啟用題）應由使用者自行過濾，特別是 `exact` 的三題。`audit_notes` 另外記錄了下列仍在啟用狀態的近似或重複題：
+`mathlib_match` 為 `variant` 的 31 題與 `exact` 的 3 題（啟用題）應由使用者自行過濾，特別是 `exact` 的三題。`audit_notes` 另外記錄了下列近似或重複題（均已於 2026-11-06 標記退役，檔案保留）：
 
 | 題目 | `audit_notes` 的記載（節錄） |
 |---|---|
-| `lean_ineq_three_pairs_mean` | 與 `lean_ineq_pairwise_sum_le` 代數等價；註記寫「duplicate, exclude in sensitivity analysis and drop at benchmark freeze」。目前仍為啟用。 |
-| `lean_nat_shifted_odd_sum` | `lean_nat_odd_sum` 的 index shift，「near-duplicate」。目前仍為啟用。 |
-| `lean_real_sqrt_le_avg_one` | `lean_real_geom_mean_two` 的特例（b=1），「near-duplicate」。目前仍為啟用。 |
+| `lean_ineq_three_pairs_mean` | 與 `lean_ineq_pairwise_sum_le` 代數等價；註記寫「duplicate, exclude in sensitivity analysis and drop at benchmark freeze」。2026-11-06 已標記退役，檔案保留。 |
+| `lean_nat_shifted_odd_sum` | `lean_nat_odd_sum` 的 index shift，「near-duplicate」。2026-11-06 已標記退役，檔案保留。 |
+| `lean_real_sqrt_le_avg_one` | `lean_real_geom_mean_two` 的特例（b=1），「near-duplicate」。2026-11-06 已標記退役，檔案保留。 |
 
-§5.3 寫「凍結題庫時移除」，但目前檔案中三題都還在。
+§5.3 寫「凍結題庫時移除」；作者於 2026-11-06 決定改為標記退役（`retired` 欄位），檔案保留。
 
 ### 5.5 其他已知限制
 
@@ -279,7 +277,7 @@ PYTHONPATH=src python3 -m mathesis.cli b0 --benchmark benchmark/lean_hard --k 8 
 
 ### 6.2 不建議的用法
 
-- **不要用 pass@1 在這個資料集上宣稱超越 SOTA。** 啟用題數 95 題，題組規模小，且 `dev` 是唯一切分（見第 5.5 節）。`docs/paper-plan.md` §2.1 寫明不能正面與 SOTA 比較解題率。
+- **不要用 pass@1 在這個資料集上宣稱超越 SOTA。** 啟用題數 92 題，題組規模小，且 `dev` 是唯一切分（見第 5.5 節）。`docs/paper-plan.md` §2.1 寫明不能正面與 SOTA 比較解題率。
 - **不要把 hint-gap 的結果解讀為「構造性提示無效」或「有效」的一般結論。** 文件的說法是：在此證明器、此 hint 規則（第一個 `have`）、此題組下沒有可偵測的穩定效果（`docs/paper-plan.md` §11）。`lean_real_lucas_five` 在 k=8 的 +0.875 會隨 hint 選法變成 0，所以 Gap 對 hint 選擇敏感。
 - **不要用單一 seed 的差異判斷題目難度變化。** `054619Z` 與 `122531Z` 的逐題 |Δpass@1| 中位數為 0、p90 為 0.125、最大 0.25（`docs/paper-plan.md` §11.1）。
 - **不要把退役題當作新題的對照，也不要用它們做 hint-gap 目標。**
@@ -289,7 +287,7 @@ PYTHONPATH=src python3 -m mathesis.cli b0 --benchmark benchmark/lean_hard --k 8 
 
 ## 7. 評測結果摘要
 
-模型為 DeepSeek-Prover-V2-7B；k=8；資料為 `lean_hard` 的 89 題版本（即 2026-11-04 汰換前的題組，包含之後退役的 14 題）。數字來自各 run 的 `summary.json`，本次確認與 `docs/paper-plan.md` §11.1 一致。
+模型為 DeepSeek-Prover-V2-7B；k=8；資料為 `lean_hard` 的 89 題版本（即 2026-11-04 汰換前的題組，包含目前標記為退役的 17 題）。數字來自各 run 的 `summary.json`，本次確認與 `docs/paper-plan.md` §11.1 一致。
 
 | run | seed | pass@1 | pass@8 | 判定 | 備註 |
 |---|---|---|---|---|---|
@@ -298,7 +296,7 @@ PYTHONPATH=src python3 -m mathesis.cli b0 --benchmark benchmark/lean_hard --k 8 
 
 兩次 run 的 pass@1 差異為 0.007；§11.1 記錄逐題比較的噪音下限：89 題中 74 題 |Δ| 為 0、11 題為 0.125、4 題為 0.25。
 
-**注意。** 這兩次 run 使用的是 89 題，不是目前的 95 題啟用題組。§11 第 10 項另有一次 38 題版的 MLX 4bit run（pass@1 0.819、pass@8 0.895），run 目錄不在本 checkout 中，本節未納入。
+**注意。** 這兩次 run 使用的是 89 題，不是目前的 92 題啟用題組。§11 第 10 項另有一次 38 題版的 MLX 4bit run（pass@1 0.819、pass@8 0.895），run 目錄不在本 checkout 中，本節未納入。
 
 **新題 B0 篩選**（§11.1，20 題，k=8）：pass@1 0.444（seed 0）與 0.400（seed 1）；pass@8 0.550 與 0.600。
 
@@ -306,7 +304,7 @@ PYTHONPATH=src python3 -m mathesis.cli b0 --benchmark benchmark/lean_hard --k 8 
 
 ## 8. 授權與引用
 
-- **授權：待作者補充。** 本專案根目錄與 `benchmark/lean_hard/` 下沒有 LICENSE 檔（已檢查）。`lean/.lake/packages/` 下有各依賴的 LICENSE（例如 `mathlib/LICENSE`），那些屬於第三方，不代表本資料集的授權。文件中關於權重授權的說明（`docs/paper-plan.md` §11 已知問題）針對模型權重，與資料集授權無關。
+- **授權：CC BY 4.0（作者決定，2026-11-06）。** 完整聲明見 `benchmark/lean_hard/LICENSE.md`。資料集（`problems.json`、`hints/`、本說明文件）與 `lean/` 下的題目證明檔採 CC BY 4.0。依賴的 Mathlib 等第三方套件維持各自授權（Mathlib 為 Apache-2.0，已檢查其 `lean/.lake/packages/mathlib/LICENSE`），不在此授權範圍。著作權人與年份待作者補充。文件中關於權重授權的說明（`docs/paper-plan.md` §11 已知問題）針對模型權重，與資料集授權無關。
 - **引用格式：待作者補充。**
 - **作者（文件記載）。** `ChiaAn Lin`（`docs/paper-plan.md` 首段，「作者資訊（2026-11-03 提供）」）。所屬單位待確認（`docs/paper-plan.md` §10 第 4 項）。
 
@@ -316,22 +314,20 @@ PYTHONPATH=src python3 -m mathesis.cli b0 --benchmark benchmark/lean_hard --k 8 
 
 下列事項在文件或程式碼中找不到，或文件內容不一致，本檔不做推測：
 
-1. **授權**（資料集本身）。
+1. **著作權人與年份**（`benchmark/lean_hard/LICENSE.md` 中的待補欄位）。
 2. **引用格式**與 DOI；是否有預印本或版本 DOI。
 3. **版本號**（資料集本身的版本，與 Lean 或 Mathlib 版本無關）。
 4. **聯絡方式**。
 5. **作者所屬單位**（`docs/paper-plan.md` §10 第 4 項，尚未決定）。
-6. **insight 標籤的依據**：§5.3 第 3 點（Gap 門檻）與第 6 點（LLM 結構標註）與 §11（以 Gap 定義）的說法不一致。
-7. **LLM 標註的輸出**：`benchmark/annotations/` 目錄在 checkout 中不存在；標註的 prompt、回應與三次一致率的資料位置未知。
-8. **作者盲標 20 題與 Cohen κ**：文件計畫要做，但本 checkout 中沒有結果。
-9. **`source` 欄位的語意**（`core` 與 `mathlib` 各指什麼）。
-10. **`lean_hard` 是否包含 miniF2F 題目**。§5.3 的候選池有 miniF2F，但檔案中沒有標示來源。
-11. **hint-gap 的原始 run 目錄**（`runs/20261104T074803Z_hint-gap-merged` 等）：本 checkout 中存在分析檔，但要確認哪些 run 目錄需要隨資料集釋出。
-12. **污染審計的完整記錄**：§11 第 4 項寫「新題組 38/38 已檢查」，但 `runs/contamination/` 中找不到對應輸出；2026-11-04 新增的 20 題沒有審計輸出（見第 5.3 節）。
-13. **split**：calibration / dev / test 的切分是否要在釋出前實作（§5.3 第 5 點）。
-14. **`lean_ineq_three_pairs_mean` 與其他近似重複題**是否要在釋出前移除（見第 5.4 節）。
-15. **`verified` 的編譯記錄**：目前只有 §11 第 8 項的歷史敘述；是否要附上一次完整的 Lean 編譯 log。
-16. **`mathesis b0 --controls` 與 `lean_hard`** 不相容（見第 5.5 節），是否要修或在文件中保留限制。
+6. **LLM 標註的輸出與作者盲標**：`benchmark/annotations/` 目錄在 checkout 中不存在；標註的 prompt、回應、三次一致率，以及作者盲標 20 題與 Cohen κ 的資料位置未知。
+7. **`source` 欄位的語意**（`core` 與 `mathlib` 各指什麼）。
+8. **`lean_hard` 是否包含 miniF2F 題目**。§5.3 的候選池有 miniF2F，但檔案中沒有標示來源。
+9. **hint-gap 的原始 run 目錄**（`runs/20261104T074803Z_hint-gap-merged` 等）：本 checkout 中存在分析檔，但要確認哪些 run 目錄需要隨資料集釋出。
+10. **§11 第 4 項的「新題組 38/38 已檢查」**：對應的輸出檔在 `runs/contamination/` 中找不到。2026-11-06 的全 109 題審計已存在（見第 5.3 節）。
+11. **split**：calibration / dev / test 的切分是否要在釋出前實作（§5.3 第 5 點）。
+12. **`verified` 的編譯記錄**：目前只有 §11 第 8 項的歷史敘述；是否要附上一次完整的 Lean 編譯 log。
+13. **`mathesis b0 --controls` 與 `lean_hard`** 不相容（見第 5.5 節），是否要修或在文件中保留限制。
+14. **`docs/paper-plan.md` §11 的 2026-11-06 判定段**仍寫「維持以 Gap 定義 insight」，與 2026-11-06 的結構標註決定相反。本次依指示未改該段（歷史決定紀錄），需作者確認是否要加註或改寫。
 
 ---
 
@@ -341,5 +337,6 @@ PYTHONPATH=src python3 -m mathesis.cli b0 --benchmark benchmark/lean_hard --k 8 
 - validator：`src/mathesis/lean_pilot.py` 的 `validate_lean_pilot(P, base_dir="benchmark/lean_hard")` 回傳 `True`。
 - sorry 檢查：`grep -ln "sorry\|admit\|axiom" benchmark/lean_hard/lean/*.lean`，無命中。
 - k=32 分析：`runs/analysis/significance_k32_combined.json` 的 `n_problems`、`n_informative`、`n_hint_helps`、`n_hint_helps_holm`、`n_hint_hurts`、`n_passing_holm`。
+- 污染審計（109 題）：`runs/contamination/20261106T062924Z.json`。
 - B0 數字：各 run 的 `summary.json` 的 `pass_at_1`、`pass_at_k`。
 - 汰換與 B0 篩選數字：`docs/paper-plan.md` §11 與 §11.1。

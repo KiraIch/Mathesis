@@ -178,7 +178,7 @@ ICML 2027（約 2027 年 1 月底截稿）不建議當主投。
    - 擾動題與新造題（改常數、改結構，以控制污染）；
    - 舊 `lean_pilot` 50 題：test split 已被 B0 使用，不能再進 test，只作為 calibration 或 dev 的參考。
 2. **涵蓋家族**（衝刺版 6–8 個）：不等式（AM-GM、Cauchy 型）、自然數與整除、歸納、集合與邏輯、代數恆等式、自訂遞迴定義。
-3. **計算 Gap_B**：B0 證明器在原版與提示版上各取樣 k=8。依 Gap 門檻分出 insight 題，並為每題配一題 routine 對照（陳述長度、家族、原版解題率相近）。
+3. **計算 Gap_B**：B0 證明器在原版與提示版上各取樣 k=8。insight 題以結構標註定義（解法是否需要非顯然的輔助構造，見第 6 點），**不由 Gap 門檻定義**；hint-gap 的 Gap 是獨立量測，不用來決定 insight 標籤（2026-11-06 決定）。並為每題配一題 routine 對照（陳述長度、家族、原版解題率相近）。
 4. **污染審計**：Mathlib 子字串比對（既有腳本，已修掉短陳述略過的 bug）；對 miniF2F 做重疊檢查；做 memorization probe；比較原版與擾動版的效能落差。
    - 現況：`lean_hard` 89 題在主體比對中沒有非泛用命中；名稱片段命中 10 題（皆為舊 38 題），經檢視皆為雜訊。
    - 注意：這是啟發式篩檢，不是污染的證明。我自己標的 contamination 等級比篩檢更保守。
@@ -356,6 +356,8 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 
 ## 11. 目前狀態（2026-11-03）
 
+> **2026-11-06 狀態更新**：`lean_hard` 啟用題 **92 題**（總計 109；退役 17 題）。退役來源：2026-11-04 汰換 14 題（insight）；2026-11-06 因近似重複退役 3 題（`lean_ineq_three_pairs_mean`、`lean_nat_shifted_odd_sum`、`lean_real_sqrt_le_avg_one`，routine，檔案保留）。啟用題中 insight 46、routine 46。新增 20 題已做污染審計（`runs/contamination/20261106T062924Z.json`，109 題全部；啟發式篩選，不是污染證明）。下表的數字為各列當時的狀態，未改寫。
+
 | # | 項目 | 狀態 |
 |---|---|---|
 | 1 | 初始 commit | ✅ `debfb76`（95 個檔案，PDF 與 `.lake` 排除） |
@@ -393,7 +395,7 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 | `20261103T101932Z_hint-gap` | `lean_pilot` | 25 | — | — | 完成，**只作流程試測**（`lean_pilot` 的 test split 依 §5.3 只作參考）。mean gap +0.010，95% CI [0.000, 0.025]；25 題中 21 題的 plain pass@1 已為 1.0（天花板） |
 | `20261103T154014Z_hint-gap` | `lean_hard` 40 個目標 | 40 | — | — | 完成（640 列，judge v1），**作者決定（2026-11-04）：只作探索性數據**，不作為 H1 的正式證據。mean gap（hint − plain 的 pass@1）+0.075，兩層 bootstrap 95% CI [0.016, 0.147]；40 題中 29 題兩條件都在天花板或地板，非零 gap 10 題，超過雜訊 p90（0.125，來自與 `122531Z` plain 的差異）只有 5 題（`real_lucas_five` +0.875、`real_geom_mean_two` +0.750、`logic_drinker_implication` +0.500、`custom_fib2_bound` +0.250、`nat_sum_even` +0.250）。敏感度：排除 `real_exp_linear` 與係數錯誤題後 +0.076 [0.013, 0.155]；再排除所有 2026-11-04 audit 標記題後 +0.090 [0.016, 0.180]（n=32）；2026-11-04 審查判定 auxiliary 寫成策略文字（而非 have 陳述）的 9 題，兩條件全在天花板（3 題）或地板（6 題），gap 皆為 0，無法判斷策略文字 hint 的效果；其餘 31 題 +0.097 [0.020, 0.190]。各子集的非零 gap 只有 0–10 題，樣本不足以比較子集間差異。分析檔 `runs/analysis/hint_gap_report_20261103T154014Z_hint-gap.json`。注意：此 run 送出的 `lean_ineq_cube_sum_zero_sixth` hint 寫 `4*((x-y)(2x+y)(x+2y))^2`，代數上應為 `2*`（x=1, y=0 時兩側皆為 8）；`problems.json` 已於 2026-11-04 修正，但此 run 用的是錯誤係數。部分 hint 含策略性內容（`reference_proof` 中的代數提示），正式數據需另以預先登記的題目與切分重跑 |
 
-**insight 題的判定規則（2026-11-06 作者決定，於新題 15 題 shard3 結果出來之前先定）**：維持以 Gap 定義 insight，G1 的「≥40 題」改為實際可得題數，不再硬湊 40。每題以 `scripts/hint_significance.py` 判定：k=32，兩條件的 Fisher 精確檢定雙尾 p<0.05，且 hint 成功率高於 plain，才算「hint 有效」。多重比較用 Holm：**主要分析**的家族只含有資訊的題（非 plain 天花板，且兩條件合計至少 1 次成功），**敏感度分析**的家族為所有非天花板題。以 `20261104T131752Z_hint-gap-merged`（23 題）為例：有資訊的 11 題；未校正 p<0.05 共 3 題（`logic_drinker_implication`、`nat_sum_even`、`ineq_sq_sum_abc_four`）；主要 Holm 後 2 題通過（`drinker_implication` p_holm<0.0001、`sq_sum_abc_four` p_holm=0.0475，只略低於 0.05）；敏感度 Holm 後只有 `drinker_implication` 通過。**G1 的 ≥40 題目標在現有題組下不可達**。新題 15 題合併後（38 題、家族 18 題）：未校正 p<0.05 的 hint 有效題 3 題，通過 Holm 的只有 1 題（`logic_drinker_implication`），詳見下表最後一列。G1 門檻需重新決定。
+**insight 題的判定規則（2026-11-06 作者決定，於新題 15 題 shard3 結果出來之前先定）**：G1 的「≥40 題」改為實際可得題數，不再硬湊 40。（後續於 2026-11-06 另決定：`insight` 標籤以結構標註定義，不由 Gap 決定；此處的 Gap 只用來判定「hint 是否有效」。）每題以 `scripts/hint_significance.py` 判定：k=32，兩條件的 Fisher 精確檢定雙尾 p<0.05，且 hint 成功率高於 plain，才算「hint 有效」。多重比較用 Holm：**主要分析**的家族只含有資訊的題（非 plain 天花板，且兩條件合計至少 1 次成功），**敏感度分析**的家族為所有非天花板題。以 `20261104T131752Z_hint-gap-merged`（23 題）為例：有資訊的 11 題；未校正 p<0.05 共 3 題（`logic_drinker_implication`、`nat_sum_even`、`ineq_sq_sum_abc_four`）；主要 Holm 後 2 題通過（`drinker_implication` p_holm<0.0001、`sq_sum_abc_four` p_holm=0.0475，只略低於 0.05）；敏感度 Holm 後只有 `drinker_implication` 通過。**G1 的 ≥40 題目標在現有題組下不可達**。新題 15 題合併後（38 題、家族 18 題）：未校正 p<0.05 的 hint 有效題 3 題，通過 Holm 的只有 1 題（`logic_drinker_implication`），詳見下表最後一列。G1 門檻需重新決定。
 
 **G1 判定與路線決定（2026-11-06，作者選 A「接受負面結果」）**：
 - **G1 未達成**：以預先登記的規則（k=32、Fisher p<0.05、Holm 校正），38 題中只有 1 題（`logic_drinker_implication`）顯示 hint 有穩定效果，遠低於 ≥40。
