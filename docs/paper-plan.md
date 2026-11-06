@@ -329,6 +329,12 @@ PDF 存在 `literature/`（已加入 `.gitignore`），索引見：
 | DeepSeek-Prover-V2、DSP、LEGO-Prover | 子目標或引理分解 | 它們一律先分解；我們的 B3 baseline 就是直接檢驗這個差別 |
 | Li et al. 2026（arXiv:2604.16278） | 把缺乏「insight」列為 LLM 定理證明的瓶頸，但做的是非形式證明 | 我們在 Lean 中用 hint-gap 做形式化、可量測的定義。它的存在支持我們的動機，引用時要做區隔 |
 
+**2026-11-06 精讀核對結果**（全文取自 arXiv，閱讀筆記見 `docs/related-work-notes-A.md`、`docs/related-work-notes-B.md`；引句已逐句回比原文）：
+- **ProofEvolve（2608.26334）沒有做「何時觸發重構」的消融**：其消融（§5.4）只是逐一移除分解、重組、修復三種算子；全文搜尋沒有觸發時機的比較。它的 "frontier scheduling" 指選擇父節點，不是觸發時機。它的 19.8% 對 7.3% 比較的是「引理庫是否保留」，不是輔助構造的提示，不能當成與 hint-gap 同類的證據。
+- HAGeo 是否有「無輔助構造」對照，需由表 2 的 DDAR 列推論，論文未明文標示，引用時要註明是推論。
+- 各論文數字有版本差異，引用前要選定版本：DeepSeek-Prover-V2 的 PutnamBench，API 摘要寫 49/658，下載的 v2 PDF 寫 47/658；LEGO-Prover 的 miniF2F-test，API 摘要寫 47.1%，下載 PDF 寫 50.0%（47.1% 在 PDF 中是消融結果）。PutnamBench 的題數在不同文中為 640／658／644。
+- 由於路線已改為 benchmark 與負面結果（§11），Related Work 的重心從「觸發時機」轉為：形式化基準（miniF2F、ProofNet、PutnamBench）、子目標與引理分解式證明器、輔助構造相關工作；ProofEvolve 與 HAGeo 作為「評測算子貢獻而非提示差距」的對照。
+
 ### 9.3 文獻庫現況
 
 | 資料夾 | 已下載 | 只有 metadata | 找不到 |
