@@ -1,4 +1,4 @@
-# 一個附「提示差距」操作化的 Lean 4 形式證明基準，與在 7B 證明器上的負面結果
+# 小型 Lean 4 形式證明基準的評測可靠性：以提示差距為案例的負面結果
 
 > **狀態**：初稿（2026-11-06）。結構依 Datasets and Benchmarks 論文的常見寫法，尚未定稿。
 >
@@ -8,23 +8,31 @@
 
 ## 摘要
 
-本文發布 `lean_hard`，一個 Lean 4 + Mathlib 的形式證明基準。目前啟用 92 題，另有 17 題已退役並保留在檔案中（datasheet §2.1）。我們將「提示差距」（hint-gap）操作化為：在題目前加入參考證明的第一個 `have` 陳述後的成功率，減去原版的成功率（datasheet §1）。我們以 DeepSeek-Prover-V2-7B 報告 B0 基線（k=8，兩個 seed）與 seed 間的噪音下限（plan §11.1；b0-json）。在 38 題、k=32 的 hint-gap 量測中，有 18 題有資訊（非天花板，且兩條件合計至少 1 次成功）；未校正 p<0.05 的「hint 有效」有 3 題，經 Holm 校正後只剩 1 題通過（neg §3）。我們將此結果報告為負面結果：在此證明器、此提示規則與此題組下，沒有足夠的題目顯示穩定的提示效果。判定規則是事後確定的，並非預先登記（neg §1）。結果只適用於單一證明器與單一提示規則，不推廣到其他證明器或其他提示形式。
+本文以 Lean 4 形式證明基準 `lean_hard`（啟用 92 題，另有 17 題已退役並保留在檔案中；datasheet §2.1）與 DeepSeek-Prover-V2-7B 為測試床，討論小型基準上的成功率差距有多可靠。核心主張是：在本文的設定下，單一 seed、k=8 的成功率差距不足以作為結論，需要量測 seed 噪音、逐題檢定與可重驗的判定。
+
+具體結果如下。(1) seed 噪音：兩個 seed 的 B0 逐題 |Δpass@1|，原 89 題最大為 0.25，含新增題的啟用 92 題最大為 0.625（`lean_nat_r_mod_seven_pow`，7/8 對 2/8；b0-json `noise_floor`；neg §4）。(2) 提示差距（hint-gap，定義見 datasheet §1）：`lean_real_geom_mean_two` 在 k=8 時 gap 為 +0.625，k=32 時為 +0.125（p = 0.450；neg §4）（此題是 k=8 結果中 gap 第二大的題，縮小含向平均值回歸的成分，見第 1 節）。在 38 題、k=32 的量測中，有資訊（非天花板，且兩條件合計至少 1 次成功）的題為 18 題；未校正 p<0.05 的「hint 有效」有 3 題，經 Holm 校正後只有 `lean_logic_drinker_implication` 1 題通過（sig-json `summary`；neg §3）。(3) 判定可重現：三個 run 共 3144 個樣本全部與儲存值一致，0 個不一致（plan §11.1）。
+
+這些結果只適用於本文的設定：單一 7B 證明器、單一提示規則（「第一個 `have`」，事後確定、非預先登記；neg §1）、k=32 的單一 seed。判定可重現不等於生成可重現。本文不主張提示在一般情況下有效或無效。
 
 ## 1 引言
 
-既有的 Lean 相關基準在題源、形式化語言與版本上差異很大。miniF2F 同時對應多個形式化系統，且需先確認 Lean 與 Mathlib 版本才能比較通過率（notes-B §5）。ProofNet 的形式陳述為 Lean 3（notes-B §6）。PutnamBench 提供 Lean 4 形式化，但題源與版本與本文不同（notes-B §7）。各論文報告的題數與數字也有版本差異，引用時必須標明版本（notes-B §8）。[待補引用：Lean 4 與 Mathlib 的標準引用]
+本文的動機來自自己的量測，而非既有文獻的論斷。在無提示、k=8 的設定下，同一證明器（DeepSeek-Prover-V2-7B）的兩個 seed 之間，逐題 pass@1 差距在原 89 題中最大為 0.25，在含新增題的啟用 92 題中最大為 0.625（`lean_nat_r_mod_seven_pow`，seed 0 為 7/8，seed 1 為 2/8；b0-json `noise_floor`；neg §4）。在這組數據下，單一 seed 的逐題比較無法把抽樣噪音與真實差異分開。
+
+本文以「提示差距」（hint-gap）作為案例檢驗此問題。提示差距是提示版的成功率減去原版的成功率；提示版在題目前加入參考證明的第一個 `have` 陳述，只給陳述、不給證明（datasheet §1）。在 k=8 時，`lean_real_geom_mean_two` 的 gap 為 +0.625；改為 k=32 後為 +0.125（p = 0.450；neg §4）。需注意此題是 k=8 結果中 gap 第二大的題（`074803Z` 的 37 題中，gap ≥ 0.375 的只有 `lean_logic_drinker_implication` +0.875、本題 +0.625、`lean_nat_sum_even` +0.375；plan §11.1），事後挑選最大者本來就會因向平均值回歸而在更大樣本時縮小，因此這個縮小只能部分歸因於抽樣噪音，不能當作噪音大小的量測；噪音大小以上述 B0 兩個 seed 的逐題差距為準。在 38 題、k=32 的量測中，經 Holm 校正後只有 1 題通過（sig-json `summary`；neg §3）。判定以 Lean 4 與 Mathlib 進行。[待補引用：Lean 4 與 Mathlib 的標準引用]
 
 `[待作者補充：研究動機與既有基準的不足之處，材料中沒有完整論述]`
 
 本文的貢獻如下。
 
-1. **資料集與協議**：`lean_hard` 的題目、欄位、建構與審計紀錄，以及評測協議（判定、沙箱、取樣與種子、重驗腳本）（datasheet §3–§5；neg §2）。
-2. **操作化**：將提示差距定義為 hint 與 plain 的成功率之差，並以 Fisher 精確檢定與 Holm 校正判讀每題（datasheet §1；neg §1）。
-3. **負面結果**：在 DeepSeek-Prover-V2-7B、「第一個 `have`」提示規則、38 題、k=32 單一 seed 的條件下，只有 1 題通過 Holm 校正（neg §3）。
+1. **評測協議**：seed 噪音的量測（B0 兩個 seed 的逐題比較）、逐題 Fisher 精確檢定加 Holm 校正、可重驗的判定，以及判定所用的 Lean 子行程沙箱（見第 4 節；datasheet §3–§5；neg §1–§2）。判定重驗涵蓋三個 run 共 3144 個樣本，全部與儲存值一致（plan §11.1）。
+2. **測試床資料集 `lean_hard`**：啟用 92 題、17 題退役，附建構與審計紀錄（datasheet §2.1、§3）。
+3. **案例研究**：hint-gap 在此設定下不穩定的負面結果，包括 k=8 與 k=32 的對照、逐題檢定與多重校正，以及對 hint 選擇與子集組成的敏感度（見第 6 節；neg §3–§4）。
+
+本文的結論只限於：單一 7B 證明器（DeepSeek-Prover-V2-7B）、單一提示規則（「第一個 `have`」）、k=32 的單一 seed。判定重驗在同一台機器、同一版 Lean v4.35.0 與 Mathlib 上進行（plan §11.1）；判定可重現只表示給定已儲存的回應時，判定逐樣本一致，本文不證明生成可重現（plan §11.1）。
 
 本文不比較各證明器的解題率，也不主張提示在一般情況下有效或無效（datasheet §6.2；neg §5）。本文也不包含控制層系統的評測；該部分在原計畫中未實作、未檢驗（plan §11）。
 
-<!-- 來源: docs/paper-negative-results.md, docs/datasheet-lean_hard.md, docs/related-work-notes-B.md -->
+<!-- 來源: docs/paper-negative-results.md, docs/datasheet-lean_hard.md, docs/paper-plan.md, runs/analysis/b0_report_k8_2seeds.json, runs/analysis/significance_k32_combined.json -->
 
 ## 2 相關工作
 
