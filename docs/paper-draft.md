@@ -22,7 +22,7 @@
 
 關於既有論文如何報告成功率，我們只檢查了第 2 節引用的 9 篇（`docs/related-work-notes-C.md`，以關鍵字搜尋全文，結果不外推到其他文獻）。其中 3 篇報告了某種形式的變異：ProofEvolve [Ye 等 2026, arXiv:2608.26334] 報告三次獨立執行的平均並附誤差線；NanoProof [Kripner 與 Straka 2026, arXiv:2610.11605] 報告三次獨立的 RL 訓練並附 min/max 範圍；DeepSeek-Prover-V2 [Ren 等 2025, arXiv:2504.21801] 在表中以 μ ± σ 報告平均與標準差，但全文搜尋未見其執行次數。另 6 篇（HAGeo、AMBER、DeepInsight、DSP、LEGO-Prover、Goedel-Prover-V2）在全文以關鍵字搜尋沒有找到獨立執行、標準差定義、信賴區間或誤差線的敘述；Goedel-Prover-V2 的表中有 ± 但文中未定義。這是關鍵字搜尋的結果，不表示這些論文沒有做。此外，上述報告的變異是整體流程或訓練的變異，本文所量的是同一證明器、同一題目在不同 seed 下的逐題差距，兩者不同，我們沒有檢查這 9 篇是否也量過後者。
 
-`[待作者補充：本文動機是否還需要說明既有基準的不足；以上查核只支持「9 篇中有 6 篇在全文搜尋中未見變異的報告」，不支持「既有論文普遍不報告變異」]`
+本文的動機不依賴對既有文獻的概括性論斷（以上查核只支持「9 篇中有 6 篇在全文搜尋中未見變異的報告」，不支持「既有論文普遍不報告變異」），而是來自本文自己的量測：第 4–6 節所報告的 seed 噪音、k=8 到 k=32 的回歸至均值，以及 Holm 校正後結論對題目子集的敏感性。
 
 本文的貢獻如下。
 
@@ -194,7 +194,7 @@ Gap_B(p) = Pr[solve p | B, 提示版] − Pr[solve p | B, 原版]
 - 每題以雙尾 Fisher 精確檢定比較 2×2 表（[Fisher 1922, doi:10.2307/2340521]），α = 0.05。
 - **hint 有效**：p < 0.05 且 gap > 0；**hint 有害**：p < 0.05 且 gap < 0。
 - **天花板**：plain 成功次數為 32 的題，不檢定。
-- **多重比較**：以 Holm step-down 校正（Holm 1979，Scandinavian Journal of Statistics；`[待作者核對：書目細節，Crossref 查無，需人工確認後補入參考文獻]`）。主要分析的家族為「有資訊」的題，即非天花板且兩條件合計至少 1 次成功；敏感度分析的家族為所有非天花板的已檢定題。
+- **多重比較**：以 Holm step-down 校正（Holm 1979，Scandinavian Journal of Statistics 6(2): 65–70）。主要分析的家族為「有資訊」的題，即非天花板且兩條件合計至少 1 次成功；敏感度分析的家族為所有非天花板的已檢定題。
 
 **規則的時間點。** 規則記載於 `docs/paper-plan.md` §11，日期為 2026-11-06。定規則時，舊 23 題的 k=32 結果已經看過，新 15 題中也已看過 12 題（shard0、shard1、shard2）；只有 shard3 的 3 題（`real_r_nested_diff`、`nat_r_sophie_germain_composite`、`algebra_r_sq_hom_comm`）是在規則之後才出現（neg §1）。**本文不主張預先登記。** 規則應稱為事後確定的分析規則。
 
@@ -365,7 +365,7 @@ python3 scripts/replay_verify.py --benchmark benchmark/lean_hard --verify-worker
 - **資料集授權。** `lean_hard` 的資料集（`problems.json`、`hints/`、說明文件，以及 `lean/` 下的題目與證明檔）採 CC BY 4.0（`benchmark/lean_hard/LICENSE.md`；datasheet §8）。
 - **第三方授權。** Mathlib 為 Apache-2.0，依其原授權，不在本資料集的授權範圍（datasheet §8）。
 - **著作權人與年份。** ChiaAn Lin，2026（`benchmark/lean_hard/LICENSE.md`）。
-- **引用格式與 DOI。** 釋出時由存放平台（例如 Zenodo）配發 DOI；`[待釋出後填入 DOI 與引用格式]`。
+- **引用格式與 DOI。** 釋出時由存放平台（例如 Zenodo）配發 DOI；目前已有一筆 Zenodo 軟體釋出 DOI：10.5281/zenodo.24001509（「KiraIch/Mathesis: First Release」，2026-11-06；concept DOI 為 10.5281/zenodo.24001508，永遠指向最新版）。該版本是釋出當日的快照，不含其後的提交（例如第二 seed 結果），且 creator 欄位為 GitHub 帳號 KiraIch，非作者姓名；定稿釋出時應建立新版本，以新版本 DOI 引用。。
 - **作者與單位。** 文件記載的作者為 ChiaAn Lin（datasheet §8）。所屬單位為 Master Program for Health and Intelligent Medicine（作者 2026-11-06 提供）。
 - **LLM 參與。** 題目的 `insight`、`difficulty` 等欄位含 LLM 輔助標註；標註的 prompt、回應與審核紀錄 `[待作者補充：存放位置]`（datasheet §4.4、§9 第 6 項）。
 - **個人資料與敏感內容。** `[待作者補充：是否有個資或敏感內容的檢查紀錄；材料中未記載]`
@@ -382,7 +382,7 @@ python3 scripts/replay_verify.py --benchmark benchmark/lean_hard --verify-worker
 - Efron, B. 1979. Bootstrap Methods: Another Look at the Jackknife. The Annals of Statistics. doi:10.1214/aos/1176344552
 - Fisher, R. A. 1922. On the Interpretation of χ² from Contingency Tables, and the Calculation of P. Journal of the Royal Statistical Society. doi:10.2307/2340521
 - Chen, M. 等 2021. Evaluating Large Language Models Trained on Code. arXiv:2107.03374
-- Holm, S. 1979. A simple sequentially rejective multiple test procedure. Scandinavian Journal of Statistics. `[待作者核對：卷期頁與連結；Crossref 查無]`
+- Holm, S. 1979. A simple sequentially rejective multiple test procedure. Scandinavian Journal of Statistics 6(2): 65–70. https://www.jstor.org/stable/4615733（書目取自 JSTOR 所下載 PDF 的首頁）
 
 ## 附錄
 
