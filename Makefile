@@ -3,7 +3,7 @@ export PATH := $(HOME)/.elan/bin:$(PATH)
 
 LIMIT ?= 10
 
-.PHONY: test test-kernel test-all smoke pilot lean-smoke lean-pilot lean-replay lean-search lean-bench pantograph-setup pantograph-probe
+.PHONY: test test-kernel test-all smoke pilot lean-smoke lean-pilot lean-replay lean-search lean-bench pantograph-setup pantograph-probe replay
 
 test:
 	python3 -m unittest discover -s tests -v
@@ -40,3 +40,7 @@ pantograph-setup:
 
 pantograph-probe:
 	.venv/bin/python scripts/pantograph_have_probe.py .pantograph/.lake/build/bin/repl
+
+replay:
+	@if [ -z "$(RUN)" ]; then echo "Usage: make replay RUN=runs/<name>"; exit 2; fi
+	.venv/bin/python scripts/replay_verify.py $(RUN) --table
