@@ -177,7 +177,7 @@ B0 的 seed 比較見 `runs/analysis/b0_report_k8_2seeds.json`。下表的第一
 **環境**（manifest 記錄）
 
 - Lean toolchain：`leanprover/lean4:v4.35.0`。
-- mathlib rev：`56a005855e0b0958f73ec801ae140b0a1679`。
+- mathlib rev：`56a005855ea17e0b0958f73ec801ae140b0a1679`。
 - Python 3.13.18；platform `Linux-5.15.0-139-generic-x86_64-with-glibc2.31`。
 - git commit：`39cbd1c9a55dbafc05b1d624c71af1344516d831`（`git_dirty` 為 true，見第 9 節）。
 
